@@ -1,0 +1,359 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
+import { Badge } from './ui/badge';
+import { Calendar } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useHealthData } from '../contexts/HealthDataContext';
+import { ExerciseEntry } from '../lib/database';
+
+export function ExerciseTracker() {
+  const { exerciseEntries: entries, addExerciseEntry, deleteExerciseEntry } = useHealthData();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [newEntry, setNewEntry] = useState({
+    type: 'cardio' as const,
+    name: '',
+    duration: '',
+    intensity: 'moderate' as const,
+    notes: '',
+    time: ''
+  });
+
+  const formatDate = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const getDateDisplay = (date: Date): string => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const dateStr = formatDate(date);
+    const todayStr = formatDate(today);
+    const yesterdayStr = formatDate(yesterday);
+    const tomorrowStr = formatDate(tomorrow);
+
+    if (dateStr === todayStr) return 'Today';
+    if (dateStr === yesterdayStr) return 'Yesterday';
+    if (dateStr === tomorrowStr) return 'Tomorrow';
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  const getEntriesForDate = (date: Date): ExerciseEntry[] => {
+    const dateStr = formatDate(date);
+    return entries
+      .filter(entry => entry.date === dateStr)
+      .sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  const currentDateEntries = getEntriesForDate(selectedDate);
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 1);
+    } else {
+      newDate.setDate(newDate.getDate() + 1);
+    }
+    setSelectedDate(newDate);
+  };
+
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return formatDate(date) === formatDate(today);
+  };
+
+  const addEntry = async () => {
+    if (newEntry.name && newEntry.duration && newEntry.time) {
+      await addExerciseEntry({
+        name: newEntry.name,
+        type: newEntry.type,
+        duration: parseInt(newEntry.duration),
+        intensity: newEntry.intensity,
+        notes: newEntry.notes,
+        time: newEntry.time,
+        date: formatDate(selectedDate)
+      });
+      setNewEntry({
+        type: 'cardio',
+        name: '',
+        duration: '',
+        intensity: 'moderate',
+        notes: '',
+        time: ''
+      });
+    }
+  };
+
+  const removeEntry = async (id: string) => {
+    await deleteExerciseEntry(id);
+  };
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'cardio': return <Heart className="h-4 w-4" />;
+      case 'yoga': return <Zap className="h-4 w-4" />;
+      case 'strength': return <Dumbbell className="h-4 w-4" />;
+      default: return <Dumbbell className="h-4 w-4" />;
+    }
+  };
+
+  const getIntensityColor = (intensity: string) => {
+    switch (intensity) {
+      case 'low': return 'bg-green-100 text-green-800';
+      case 'moderate': return 'bg-yellow-100 text-yellow-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const totalMinutes = currentDateEntries.reduce((sum, entry) => sum + entry.duration, 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Date Navigation */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="default"
+              size="default"
+              onClick={() => navigateDate('prev')}
+              className="h-10 px-3 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5 mr-1" />
+              <span className="hidden sm:inline">Prev</span>
+            </Button>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-10 flex-1 min-w-0">
+                  <CalendarIcon className="h-4 w-4 mr-2 shrink-0 text-black" />
+                  <span className="truncate">{getDateDisplay(selectedDate)}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <Button
+              variant="default"
+              size="default"
+              onClick={() => navigateDate('next')}
+              className="h-10 px-3 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-5 w-5 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Log Exercise
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="exercise-type">Exercise Type</Label>
+            <Select value={newEntry.type} onValueChange={(value: any) => setNewEntry({ ...newEntry, type: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cardio">
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-4 w-4" />
+                    Cardio
+                  </div>
+                </SelectItem>
+                <SelectItem value="yoga">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Yoga
+                  </div>
+                </SelectItem>
+                <SelectItem value="strength">
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Strength Training
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="exercise-name">Exercise Name</Label>
+            <Input
+              id="exercise-name"
+              value={newEntry.name}
+              onChange={(e) => setNewEntry({ ...newEntry, name: e.target.value })}
+              placeholder="e.g., Morning run, Vinyasa flow, Push ups"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                value={newEntry.duration}
+                onChange={(e) => setNewEntry({ ...newEntry, duration: e.target.value })}
+                placeholder="30"
+                min="1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="time">Time</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="time"
+                  type="time"
+                  value={newEntry.time}
+                  onChange={(e) => setNewEntry({ ...newEntry, time: e.target.value })}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewEntry({ ...newEntry, time: getCurrentTime() })}
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="intensity">Intensity</Label>
+            <Select value={newEntry.intensity} onValueChange={(value: any) => setNewEntry({ ...newEntry, intensity: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="moderate">Moderate</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="exercise-notes">Notes (optional)</Label>
+            <Textarea
+              id="exercise-notes"
+              value={newEntry.notes}
+              onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
+              placeholder="How did it feel? Any observations..."
+              rows={2}
+            />
+          </div>
+
+          <Button onClick={addEntry} className="w-full">
+            Add Exercise
+          </Button>
+        </CardContent>
+      </Card>
+
+      {totalMinutes > 0 && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl text-primary mb-1">{totalMinutes} minutes</div>
+              <div className="text-sm text-muted-foreground">Total exercise for {getDateDisplay(selectedDate).toLowerCase()}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        <h3>Exercise Log - {getDateDisplay(selectedDate)}</h3>
+        {currentDateEntries.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No exercises logged for {getDateDisplay(selectedDate).toLowerCase()}. Start your workout!
+            </CardContent>
+          </Card>
+        ) : (
+          currentDateEntries.map((entry) => (
+            <Card key={entry.id}>
+              <CardContent className="pt-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md text-sm">
+                        {getTypeIcon(entry.type)}
+                        <span className="capitalize">{entry.type}</span>
+                      </div>
+                      <Badge className={getIntensityColor(entry.intensity)}>
+                        {entry.intensity}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{entry.time}</span>
+                    </div>
+                    <h4 className="mb-1">{entry.name}</h4>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {entry.duration} minutes
+                    </p>
+                    {entry.notes && (
+                      <p className="text-sm text-muted-foreground italic">
+                        {entry.notes}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeEntry(entry.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Quick Navigation to Today */}
+      {!isToday(selectedDate) && (
+        <Button
+          variant="outline"
+          onClick={() => setSelectedDate(new Date())}
+          className="w-full"
+        >
+          Go to Today
+        </Button>
+      )}
+    </div>
+  );
+}
