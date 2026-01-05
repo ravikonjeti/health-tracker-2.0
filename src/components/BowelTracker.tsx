@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Trash2, Clock, Info, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Clock, Info, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { BowelEntry } from '../lib/database';
 
@@ -23,8 +23,9 @@ const bristolTypes = [
 ];
 
 export function BowelTracker() {
-  const { bowelEntries: entries, addBowelEntry, deleteBowelEntry } = useHealthData();
+  const { bowelEntries: entries, addBowelEntry, deleteBowelEntry, updateBowelEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
     type: '',
     time: '',
@@ -82,14 +83,43 @@ export function BowelTracker() {
     return formatDate(date) === formatDate(today);
   };
 
+  const startEditing = (entry: BowelEntry) => {
+    setEditingId(entry.id!);
+    setNewEntry({
+      type: entry.type.toString(),
+      time: entry.time,
+      notes: entry.notes || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: '',
+      time: '',
+      notes: ''
+    });
+  };
+
   const addEntry = async () => {
     if (newEntry.type && newEntry.time) {
-      await addBowelEntry({
-        type: parseInt(newEntry.type),
-        time: newEntry.time,
-        notes: newEntry.notes,
-        date: formatDate(selectedDate)
-      });
+      if (editingId) {
+        await updateBowelEntry(editingId, {
+          type: parseInt(newEntry.type),
+          time: newEntry.time,
+          notes: newEntry.notes,
+          date: formatDate(selectedDate)
+        });
+        setEditingId(null);
+      } else {
+        await addBowelEntry({
+          type: parseInt(newEntry.type),
+          time: newEntry.time,
+          notes: newEntry.notes,
+          date: formatDate(selectedDate)
+        });
+      }
       setNewEntry({
         type: '',
         time: '',
@@ -161,7 +191,7 @@ export function BowelTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Log Bowel Movement
+            {editingId ? 'Edit Bowel Entry' : 'Log Bowel Movement'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -251,9 +281,20 @@ export function BowelTracker() {
             />
           </div>
 
-          <Button onClick={addEntry} className="w-full">
-            Add Entry
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
+              {editingId ? 'Update Entry' : 'Add Entry'}
+            </Button>
+            {editingId && (
+              <Button
+                variant="outline"
+                onClick={cancelEditing}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -289,14 +330,24 @@ export function BowelTracker() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeEntry(entry.id)}
-                      className="text-destructive hover:text-destructive ml-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => startEditing(entry)}
+                        className="text-primary hover:text-primary ml-2"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEntry(entry.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

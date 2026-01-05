@@ -8,13 +8,16 @@ import { Capacitor } from '@capacitor/core';
 // Export all data as JSON
 export async function exportAllDataAsJSON(): Promise<void> {
   const data = {
-    version: '1.0',
+    version: '2.0',
     exportDate: new Date().toISOString(),
     foodEntries: await db.foodEntries.toArray(),
     waterEntries: await db.waterEntries.toArray(),
     exerciseEntries: await db.exerciseEntries.toArray(),
     bowelEntries: await db.bowelEntries.toArray(),
     symptomEntries: await db.symptomEntries.toArray(),
+    medications: await db.medications.toArray(),
+    medicineEntries: await db.medicineEntries.toArray(),
+    weightEntries: await db.weightEntries.toArray(),
     settings: await db.settings.toArray()
   };
 
@@ -91,6 +94,75 @@ export async function exportSymptomsAsCSV(): Promise<void> {
   const csv = createCSV(headers, rows);
   const blob = new Blob([csv], { type: 'text/csv' });
   await shareOrDownload(blob, `symptoms-log-${formatDate(new Date())}.csv`);
+}
+
+// Export unified CSV with all categories
+export async function exportUnifiedCSV(): Promise<void> {
+  // Fetch all entries
+  const foodEntries = await db.foodEntries.toArray();
+  const waterEntries = await db.waterEntries.toArray();
+  const exerciseEntries = await db.exerciseEntries.toArray();
+  const bowelEntries = await db.bowelEntries.toArray();
+  const symptomEntries = await db.symptomEntries.toArray();
+  const medicineEntries = await db.medicineEntries.toArray();
+  const weightEntries = await db.weightEntries.toArray();
+
+  // Create unified rows with category column
+  const allRows: Array<[string, string, string, string]> = [];
+
+  // Food entries
+  foodEntries.forEach(e => {
+    const details = `${e.type} | ${e.description}${e.portion ? ` | ${e.portion}` : ''}${e.ingredients.length > 0 ? ` | Ingredients: ${e.ingredients.join(', ')}` : ''}${e.notes ? ` | ${e.notes}` : ''}`;
+    allRows.push([e.date, e.time, 'Food', details]);
+  });
+
+  // Water entries
+  waterEntries.forEach(e => {
+    allRows.push([e.date, e.time, 'Water', `${e.amount}ml`]);
+  });
+
+  // Exercise entries
+  exerciseEntries.forEach(e => {
+    const details = `${e.type} | ${e.name} | ${e.duration}min | ${e.intensity}${e.notes ? ` | ${e.notes}` : ''}`;
+    allRows.push([e.date, e.time, 'Exercise', details]);
+  });
+
+  // Bowel entries
+  bowelEntries.forEach(e => {
+    const details = `Type ${e.type}${e.notes ? ` | ${e.notes}` : ''}`;
+    allRows.push([e.date, e.time, 'Bowel', details]);
+  });
+
+  // Symptom entries
+  symptomEntries.forEach(e => {
+    const details = `${e.symptom} | ${e.severity} | ${e.description}${e.triggers ? ` | Triggers: ${e.triggers}` : ''}`;
+    allRows.push([e.date, e.time, 'Symptom', details]);
+  });
+
+  // Medicine entries
+  medicineEntries.forEach(e => {
+    const details = `${e.medicationName} | ${e.dosage}${e.notes ? ` | ${e.notes}` : ''}`;
+    allRows.push([e.date, e.time, 'Medicine', details]);
+  });
+
+  // Weight entries
+  weightEntries.forEach(e => {
+    const details = `${e.weight}${e.unit}${e.bodyFat ? ` | Body Fat: ${e.bodyFat}%` : ''}${e.water ? ` | Water: ${e.water}%` : ''}${e.muscleMass ? ` | Muscle: ${e.muscleMass}lbs` : ''}${e.bmi ? ` | BMI: ${e.bmi}` : ''}${e.boneMass ? ` | Bone: ${e.boneMass}${e.unit}` : ''}`;
+    allRows.push([e.date, e.time, 'Weight', details]);
+  });
+
+  // Sort all rows by date and time (chronologically)
+  allRows.sort((a, b) => {
+    const dateCompare = a[0].localeCompare(b[0]);
+    if (dateCompare !== 0) return dateCompare;
+    return a[1].localeCompare(b[1]);
+  });
+
+  // Create CSV
+  const headers = ['Date', 'Time', 'Category', 'Details'];
+  const csv = createCSV(headers, allRows);
+  const blob = new Blob([csv], { type: 'text/csv' });
+  await shareOrDownload(blob, `health-tracker-unified-${formatDate(new Date())}.csv`);
 }
 
 // Export insights as PDF
@@ -186,6 +258,15 @@ export async function importDataFromJSON(file: File): Promise<boolean> {
     }
     if (data.symptomEntries) {
       await db.symptomEntries.bulkAdd(data.symptomEntries);
+    }
+    if (data.medications) {
+      await db.medications.bulkAdd(data.medications);
+    }
+    if (data.medicineEntries) {
+      await db.medicineEntries.bulkAdd(data.medicineEntries);
+    }
+    if (data.weightEntries) {
+      await db.weightEntries.bulkAdd(data.weightEntries);
     }
 
     return true;

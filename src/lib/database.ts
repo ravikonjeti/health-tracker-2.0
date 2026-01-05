@@ -48,6 +48,36 @@ export interface SymptomEntry {
   date: string;
 }
 
+export interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+  notes?: string;
+}
+
+export interface MedicineEntry {
+  id?: string;
+  medicationId: string;
+  medicationName: string;
+  dosage: string;
+  time: string;
+  date: string;
+  notes?: string;
+}
+
+export interface WeightEntry {
+  id?: string;
+  weight: number;
+  unit: 'kg' | 'lb';
+  time: string;
+  date: string;
+  bodyFat?: number;
+  water?: number;
+  muscleMass?: number;
+  boneMass?: number;
+  bmi?: number;
+}
+
 export interface UserSettings {
   id?: string;
   dailyWaterGoal: number; // ml
@@ -61,6 +91,9 @@ export class HealthDatabase extends Dexie {
   exerciseEntries!: Table<ExerciseEntry, string>;
   bowelEntries!: Table<BowelEntry, string>;
   symptomEntries!: Table<SymptomEntry, string>;
+  medications!: Table<Medication, string>;
+  medicineEntries!: Table<MedicineEntry, string>;
+  weightEntries!: Table<WeightEntry, string>;
   settings!: Table<UserSettings, string>;
 
   constructor() {
@@ -72,6 +105,19 @@ export class HealthDatabase extends Dexie {
       exerciseEntries: '++id, date, time, type',
       bowelEntries: '++id, date, time',
       symptomEntries: '++id, date, time, symptom',
+      settings: '++id'
+    });
+
+    // Version 2: Add medicine and weight tracking
+    this.version(2).stores({
+      foodEntries: '++id, date, time, type, *ingredients',
+      waterEntries: '++id, date, time',
+      exerciseEntries: '++id, date, time, type',
+      bowelEntries: '++id, date, time',
+      symptomEntries: '++id, date, time, symptom',
+      medications: '++id, name',
+      medicineEntries: '++id, date, time, medicationId',
+      weightEntries: '++id, date, time',
       settings: '++id'
     });
   }

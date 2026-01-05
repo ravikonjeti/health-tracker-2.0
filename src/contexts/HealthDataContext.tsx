@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, initializeDatabase } from '../lib/database';
+import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, Medication, MedicineEntry, WeightEntry, initializeDatabase } from '../lib/database';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 interface HealthDataContextType {
@@ -13,21 +13,43 @@ interface HealthDataContextType {
   waterEntries: WaterEntry[];
   addWaterEntry: (entry: Omit<WaterEntry, 'id'>) => Promise<void>;
   deleteWaterEntry: (id: string) => Promise<void>;
+  updateWaterEntry: (id: string, entry: Partial<WaterEntry>) => Promise<void>;
 
   // Exercise
   exerciseEntries: ExerciseEntry[];
   addExerciseEntry: (entry: Omit<ExerciseEntry, 'id'>) => Promise<void>;
   deleteExerciseEntry: (id: string) => Promise<void>;
+  updateExerciseEntry: (id: string, entry: Partial<ExerciseEntry>) => Promise<void>;
 
   // Bowel
   bowelEntries: BowelEntry[];
   addBowelEntry: (entry: Omit<BowelEntry, 'id'>) => Promise<void>;
   deleteBowelEntry: (id: string) => Promise<void>;
+  updateBowelEntry: (id: string, entry: Partial<BowelEntry>) => Promise<void>;
 
   // Symptoms
   symptomEntries: SymptomEntry[];
   addSymptomEntry: (entry: Omit<SymptomEntry, 'id'>) => Promise<void>;
   deleteSymptomEntry: (id: string) => Promise<void>;
+  updateSymptomEntry: (id: string, entry: Partial<SymptomEntry>) => Promise<void>;
+
+  // Medications
+  medications: Medication[];
+  addMedication: (medication: Omit<Medication, 'id'>) => Promise<void>;
+  deleteMedication: (id: string) => Promise<void>;
+  updateMedication: (id: string, medication: Partial<Medication>) => Promise<void>;
+
+  // Medicine Entries
+  medicineEntries: MedicineEntry[];
+  addMedicineEntry: (entry: Omit<MedicineEntry, 'id'>) => Promise<void>;
+  deleteMedicineEntry: (id: string) => Promise<void>;
+  updateMedicineEntry: (id: string, entry: Partial<MedicineEntry>) => Promise<void>;
+
+  // Weight
+  weightEntries: WeightEntry[];
+  addWeightEntry: (entry: Omit<WeightEntry, 'id'>) => Promise<void>;
+  deleteWeightEntry: (id: string) => Promise<void>;
+  updateWeightEntry: (id: string, entry: Partial<WeightEntry>) => Promise<void>;
 
   // Settings
   waterGoal: number;
@@ -45,6 +67,9 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
   const exerciseEntries = useLiveQuery(() => db.exerciseEntries.toArray()) || [];
   const bowelEntries = useLiveQuery(() => db.bowelEntries.toArray()) || [];
   const symptomEntries = useLiveQuery(() => db.symptomEntries.toArray()) || [];
+  const medications = useLiveQuery(() => db.medications.toArray()) || [];
+  const medicineEntries = useLiveQuery(() => db.medicineEntries.toArray()) || [];
+  const weightEntries = useLiveQuery(() => db.weightEntries.toArray()) || [];
 
   // Initialize database and load settings
   useEffect(() => {
@@ -78,6 +103,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     await db.waterEntries.delete(id);
   };
 
+  const updateWaterEntry = async (id: string, entry: Partial<WaterEntry>) => {
+    await db.waterEntries.update(id, entry);
+  };
+
   // Exercise operations
   const addExerciseEntry = async (entry: Omit<ExerciseEntry, 'id'>) => {
     await db.exerciseEntries.add({ ...entry, id: Date.now().toString() });
@@ -85,6 +114,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
 
   const deleteExerciseEntry = async (id: string) => {
     await db.exerciseEntries.delete(id);
+  };
+
+  const updateExerciseEntry = async (id: string, entry: Partial<ExerciseEntry>) => {
+    await db.exerciseEntries.update(id, entry);
   };
 
   // Bowel operations
@@ -96,6 +129,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     await db.bowelEntries.delete(id);
   };
 
+  const updateBowelEntry = async (id: string, entry: Partial<BowelEntry>) => {
+    await db.bowelEntries.update(id, entry);
+  };
+
   // Symptom operations
   const addSymptomEntry = async (entry: Omit<SymptomEntry, 'id'>) => {
     await db.symptomEntries.add({ ...entry, id: Date.now().toString() });
@@ -103,6 +140,49 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
 
   const deleteSymptomEntry = async (id: string) => {
     await db.symptomEntries.delete(id);
+  };
+
+  const updateSymptomEntry = async (id: string, entry: Partial<SymptomEntry>) => {
+    await db.symptomEntries.update(id, entry);
+  };
+
+  // Medication operations
+  const addMedication = async (medication: Omit<Medication, 'id'>) => {
+    await db.medications.add({ ...medication, id: Date.now().toString() });
+  };
+
+  const deleteMedication = async (id: string) => {
+    await db.medications.delete(id);
+  };
+
+  const updateMedication = async (id: string, medication: Partial<Medication>) => {
+    await db.medications.update(id, medication);
+  };
+
+  // Medicine Entry operations
+  const addMedicineEntry = async (entry: Omit<MedicineEntry, 'id'>) => {
+    await db.medicineEntries.add({ ...entry, id: Date.now().toString() });
+  };
+
+  const deleteMedicineEntry = async (id: string) => {
+    await db.medicineEntries.delete(id);
+  };
+
+  const updateMedicineEntry = async (id: string, entry: Partial<MedicineEntry>) => {
+    await db.medicineEntries.update(id, entry);
+  };
+
+  // Weight operations
+  const addWeightEntry = async (entry: Omit<WeightEntry, 'id'>) => {
+    await db.weightEntries.add({ ...entry, id: Date.now().toString() });
+  };
+
+  const deleteWeightEntry = async (id: string) => {
+    await db.weightEntries.delete(id);
+  };
+
+  const updateWeightEntry = async (id: string, entry: Partial<WeightEntry>) => {
+    await db.weightEntries.update(id, entry);
   };
 
   // Settings operations
@@ -124,15 +204,31 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
         waterEntries,
         addWaterEntry,
         deleteWaterEntry,
+        updateWaterEntry,
         exerciseEntries,
         addExerciseEntry,
         deleteExerciseEntry,
+        updateExerciseEntry,
         bowelEntries,
         addBowelEntry,
         deleteBowelEntry,
+        updateBowelEntry,
         symptomEntries,
         addSymptomEntry,
         deleteSymptomEntry,
+        updateSymptomEntry,
+        medications,
+        addMedication,
+        deleteMedication,
+        updateMedication,
+        medicineEntries,
+        addMedicineEntry,
+        deleteMedicineEntry,
+        updateMedicineEntry,
+        weightEntries,
+        addWeightEntry,
+        deleteWeightEntry,
+        updateWeightEntry,
         waterGoal,
         setWaterGoal,
       }}

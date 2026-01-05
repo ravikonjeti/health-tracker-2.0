@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Trash2, Clock, AlertTriangle, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Clock, AlertTriangle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { SymptomEntry } from '../lib/database';
 
@@ -29,8 +29,9 @@ const commonSymptoms = [
 ];
 
 export function SymptomsTracker() {
-  const { symptomEntries: entries, addSymptomEntry, deleteSymptomEntry } = useHealthData();
+  const { symptomEntries: entries, addSymptomEntry, deleteSymptomEntry, updateSymptomEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
     symptom: '',
     severity: 'mild' as const,
@@ -90,12 +91,43 @@ export function SymptomsTracker() {
     return formatDate(date) === formatDate(today);
   };
 
+  const startEditing = (entry: SymptomEntry) => {
+    setEditingId(entry.id!);
+    setNewEntry({
+      symptom: entry.symptom,
+      severity: entry.severity,
+      time: entry.time,
+      description: entry.description,
+      triggers: entry.triggers || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      symptom: '',
+      severity: 'mild',
+      time: '',
+      description: '',
+      triggers: ''
+    });
+  };
+
   const addEntry = async () => {
     if (newEntry.symptom && newEntry.time && newEntry.description) {
-      await addSymptomEntry({
-        ...newEntry,
-        date: formatDate(selectedDate)
-      });
+      if (editingId) {
+        await updateSymptomEntry(editingId, {
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+        setEditingId(null);
+      } else {
+        await addSymptomEntry({
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+      }
       setNewEntry({
         symptom: '',
         severity: 'mild',
@@ -181,7 +213,7 @@ export function SymptomsTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Log Symptom
+            {editingId ? 'Edit Symptom Entry' : 'Log Symptom'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -266,9 +298,20 @@ export function SymptomsTracker() {
             />
           </div>
 
-          <Button onClick={addEntry} className="w-full">
-            Add Symptom
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
+              {editingId ? 'Update Entry' : 'Add Symptom'}
+            </Button>
+            {editingId && (
+              <Button
+                variant="outline"
+                onClick={cancelEditing}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -303,14 +346,24 @@ export function SymptomsTracker() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeEntry(entry.id)}
-                    className="text-destructive hover:text-destructive ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing(entry)}
+                      className="text-primary hover:text-primary ml-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeEntry(entry.id)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

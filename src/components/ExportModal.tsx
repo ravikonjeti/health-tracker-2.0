@@ -4,10 +4,7 @@ import { Button } from './ui/button';
 import { Download, FileJson, FileSpreadsheet } from 'lucide-react';
 import {
   exportAllDataAsJSON,
-  exportFoodAsCSV,
-  exportWaterAsCSV,
-  exportExerciseAsCSV,
-  exportSymptomsAsCSV
+  exportUnifiedCSV
 } from '../lib/export';
 
 export function ExportModal() {
@@ -41,40 +38,17 @@ export function ExportModal() {
           </Button>
 
           <Button
-            onClick={() => handleExport(exportFoodAsCSV)}
+            onClick={() => handleExport(exportUnifiedCSV)}
             variant="outline"
             className="w-full justify-start"
           >
             <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Food Log (CSV)
+            Unified Health Log (CSV)
           </Button>
 
-          <Button
-            onClick={() => handleExport(exportWaterAsCSV)}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Water Log (CSV)
-          </Button>
-
-          <Button
-            onClick={() => handleExport(exportExerciseAsCSV)}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Exercise Log (CSV)
-          </Button>
-
-          <Button
-            onClick={() => handleExport(exportSymptomsAsCSV)}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Symptoms Log (CSV)
-          </Button>
+          <p className="text-xs text-muted-foreground px-1 pt-2">
+            The unified CSV includes all categories (Food, Water, Exercise, Bowel, Symptoms, Medicine, Weight) sorted chronologically.
+          </p>
         </div>
       </DialogContent>
     </Dialog>

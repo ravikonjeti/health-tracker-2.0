@@ -8,13 +8,14 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { ExerciseEntry } from '../lib/database';
 
 export function ExerciseTracker() {
-  const { exerciseEntries: entries, addExerciseEntry, deleteExerciseEntry } = useHealthData();
+  const { exerciseEntries: entries, addExerciseEntry, deleteExerciseEntry, updateExerciseEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
     type: 'cardio' as const,
     name: '',
@@ -75,17 +76,55 @@ export function ExerciseTracker() {
     return formatDate(date) === formatDate(today);
   };
 
+  const startEditing = (entry: ExerciseEntry) => {
+    setEditingId(entry.id!);
+    setNewEntry({
+      type: entry.type,
+      name: entry.name,
+      duration: entry.duration.toString(),
+      intensity: entry.intensity,
+      notes: entry.notes || '',
+      time: entry.time
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: 'cardio',
+      name: '',
+      duration: '',
+      intensity: 'moderate',
+      notes: '',
+      time: ''
+    });
+  };
+
   const addEntry = async () => {
     if (newEntry.name && newEntry.duration && newEntry.time) {
-      await addExerciseEntry({
-        name: newEntry.name,
-        type: newEntry.type,
-        duration: parseInt(newEntry.duration),
-        intensity: newEntry.intensity,
-        notes: newEntry.notes,
-        time: newEntry.time,
-        date: formatDate(selectedDate)
-      });
+      if (editingId) {
+        await updateExerciseEntry(editingId, {
+          name: newEntry.name,
+          type: newEntry.type,
+          duration: parseInt(newEntry.duration),
+          intensity: newEntry.intensity,
+          notes: newEntry.notes,
+          time: newEntry.time,
+          date: formatDate(selectedDate)
+        });
+        setEditingId(null);
+      } else {
+        await addExerciseEntry({
+          name: newEntry.name,
+          type: newEntry.type,
+          duration: parseInt(newEntry.duration),
+          intensity: newEntry.intensity,
+          notes: newEntry.notes,
+          time: newEntry.time,
+          date: formatDate(selectedDate)
+        });
+      }
       setNewEntry({
         type: 'cardio',
         name: '',
@@ -175,8 +214,8 @@ export function ExerciseTracker() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Log Exercise
+            <Dumbbell className="h-5 w-5" style={{ color: '#CD7F32' }} />
+            {editingId ? 'Edit Exercise Entry' : 'Log Exercise'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -278,9 +317,20 @@ export function ExerciseTracker() {
             />
           </div>
 
-          <Button onClick={addEntry} className="w-full">
-            Add Exercise
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
+              {editingId ? 'Update Entry' : 'Add Exercise'}
+            </Button>
+            {editingId && (
+              <Button
+                variant="outline"
+                onClick={cancelEditing}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -329,14 +379,24 @@ export function ExerciseTracker() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeEntry(entry.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing(entry)}
+                      className="text-primary hover:text-primary ml-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeEntry(entry.id)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

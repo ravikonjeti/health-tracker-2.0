@@ -8,13 +8,14 @@ import { Textarea } from './ui/textarea';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { FoodEntry } from '../lib/database';
 
 export function FoodTracker() {
-  const { foodEntries: entries, addFoodEntry, deleteFoodEntry } = useHealthData();
+  const { foodEntries: entries, addFoodEntry, deleteFoodEntry, updateFoodEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
     type: 'breakfast' as const,
     description: '',
@@ -75,12 +76,46 @@ export function FoodTracker() {
     });
   };
 
+  const startEditing = (entry: FoodEntry) => {
+    setEditingId(entry.id!);
+    setNewEntry({
+      type: entry.type,
+      description: entry.description,
+      time: entry.time,
+      portion: entry.portion || '',
+      ingredients: entry.ingredients || [],
+      notes: entry.notes || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: 'breakfast',
+      description: '',
+      time: '',
+      portion: '',
+      ingredients: [],
+      notes: ''
+    });
+    setNewIngredient('');
+  };
+
   const addEntry = async () => {
     if (newEntry.description && newEntry.time) {
-      await addFoodEntry({
-        ...newEntry,
-        date: formatDate(selectedDate)
-      });
+      if (editingId) {
+        await updateFoodEntry(editingId, {
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+        setEditingId(null);
+      } else {
+        await addFoodEntry({
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+      }
       setNewEntry({
         type: 'breakfast',
         description: '',
@@ -244,7 +279,7 @@ export function FoodTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Utensils className="h-5 w-5" style={{ color: '#CD7F32' }} />
-            Food Entry
+            {editingId ? 'Edit Food Entry' : 'Add Food Entry'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -366,9 +401,20 @@ export function FoodTracker() {
             />
           </div>
 
-          <Button onClick={addEntry} className="w-full">
-            Add Entry
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
+              {editingId ? 'Update Entry' : 'Add Entry'}
+            </Button>
+            {editingId && (
+              <Button
+                variant="outline"
+                onClick={cancelEditing}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -423,14 +469,24 @@ export function FoodTracker() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeEntry(entry.id)}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing(entry)}
+                      className="text-primary hover:text-primary ml-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeEntry(entry.id!)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

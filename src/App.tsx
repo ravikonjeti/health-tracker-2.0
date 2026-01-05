@@ -4,16 +4,18 @@ import { WaterTracker } from './components/WaterTracker';
 import { ExerciseTracker } from './components/ExerciseTracker';
 import { BowelTracker } from './components/BowelTracker';
 import { SymptomsTracker } from './components/SymptomsTracker';
+import { MedicationsTracker } from './components/MedicationsTracker';
+import { WeightTracker } from './components/WeightTracker';
 import { InsightsTracker } from './components/InsightsTracker';
 import { ExportModal } from './components/ExportModal';
 import { ImportModal } from './components/ImportModal';
 import { InstallPrompt } from './components/InstallPrompt';
-import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, TrendingUp } from 'lucide-react';
+import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, Pill, Scale, TrendingUp } from 'lucide-react';
 
 export default function App() {
   return (
     <>
-      <div className="min-h-screen bg-background p-3 w-full overflow-x-hidden">
+      <div className="min-h-screen bg-background pb-3 px-3 w-full overflow-x-hidden" style={{ paddingTop: '75px' }}>
         <div className="mb-4 max-w-full">
           <div className="flex items-center justify-between mb-2 gap-2">
             <h1 className="text-xl font-bold text-primary flex-shrink">Health Tracker</h1>
@@ -22,36 +24,36 @@ export default function App() {
               <ImportModal />
             </div>
           </div>
-          <p className="text-center text-muted-foreground text-xs">
-            Track your daily wellness journey and discover patterns
+          <p className="text-center text-muted-foreground text-xs mb-3">
+            Track your daily wellness journey
           </p>
         </div>
 
         <Tabs defaultValue="food" className="w-full">
-          <TabsList className="grid grid-cols-6 w-full mb-4 h-auto gap-0">
-            <TabsTrigger value="food" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <Utensils className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Food</span>
+          <TabsList className="flex justify-between w-full mb-4 h-auto gap-1 p-2 bg-gray-100 dark:bg-gray-800">
+            <TabsTrigger value="food" className="p-3 h-auto min-h-0 flex-1" title="Food">
+              <Utensils className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="water" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <Droplets className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Water</span>
+            <TabsTrigger value="water" className="p-3 h-auto min-h-0 flex-1" title="Water">
+              <Droplets className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="exercise" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <Dumbbell className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Exercise</span>
+            <TabsTrigger value="exercise" className="p-3 h-auto min-h-0 flex-1" title="Exercise">
+              <Dumbbell className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="bowel" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <Heart className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Bowel</span>
+            <TabsTrigger value="bowel" className="p-3 h-auto min-h-0 flex-1" title="Bowel">
+              <Heart className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="symptoms" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <Stethoscope className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Symptoms</span>
+            <TabsTrigger value="symptoms" className="p-3 h-auto min-h-0 flex-1" title="Symptoms">
+              <Stethoscope className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="insights" className="flex-col py-2 px-1 h-auto min-h-[3rem]">
-              <TrendingUp className="h-4 w-4 mb-1" />
-              <span className="text-[10px] leading-tight">Insights</span>
+            <TabsTrigger value="medicine" className="p-3 h-auto min-h-0 flex-1" title="Medicine">
+              <Pill className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger value="weight" className="p-3 h-auto min-h-0 flex-1" title="Weight">
+              <Scale className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger value="insights" className="p-3 h-auto min-h-0 flex-1" title="Insights">
+              <TrendingUp className="h-5 w-5" />
             </TabsTrigger>
           </TabsList>
 
@@ -73,6 +75,14 @@ export default function App() {
 
           <TabsContent value="symptoms">
             <SymptomsTracker />
+          </TabsContent>
+
+          <TabsContent value="medicine">
+            <MedicationsTracker />
+          </TabsContent>
+
+          <TabsContent value="weight">
+            <WeightTracker />
           </TabsContent>
 
           <TabsContent value="insights">
