@@ -19,11 +19,12 @@ const bristolTypes = [
   { type: 4, description: "Smooth sausage", detail: "Normal" },
   { type: 5, description: "Soft blobs", detail: "Lacking fiber" },
   { type: 6, description: "Mushy consistency", detail: "Mild diarrhea" },
-  { type: 7, description: "Liquid consistency", detail: "Severe diarrhea" }
+  { type: 7, description: "Liquid consistency", detail: "Severe diarrhea" },
+  { type: 8, description: "Other", detail: "Does not fit standard types" }
 ];
 
 export function BowelTracker() {
-  const { bowelEntries: entries, addBowelEntry, deleteBowelEntry, updateBowelEntry } = useHealthData();
+  const { bowelEntries, addBowelEntry, updateBowelEntry, deleteBowelEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
@@ -61,7 +62,7 @@ export function BowelTracker() {
 
   const getEntriesForDate = (date: Date): BowelEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return bowelEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -83,28 +84,10 @@ export function BowelTracker() {
     return formatDate(date) === formatDate(today);
   };
 
-  const startEditing = (entry: BowelEntry) => {
-    setEditingId(entry.id!);
-    setNewEntry({
-      type: entry.type.toString(),
-      time: entry.time,
-      notes: entry.notes || ''
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setNewEntry({
-      type: '',
-      time: '',
-      notes: ''
-    });
-  };
-
   const addEntry = async () => {
     if (newEntry.type && newEntry.time) {
       if (editingId) {
+        // Update existing entry
         await updateBowelEntry(editingId, {
           type: parseInt(newEntry.type),
           time: newEntry.time,
@@ -113,6 +96,7 @@ export function BowelTracker() {
         });
         setEditingId(null);
       } else {
+        // Add new entry
         await addBowelEntry({
           type: parseInt(newEntry.type),
           time: newEntry.time,
@@ -130,6 +114,33 @@ export function BowelTracker() {
 
   const removeEntry = async (id: string) => {
     await deleteBowelEntry(id);
+    if (editingId === id) {
+      setEditingId(null);
+      setNewEntry({
+        type: '',
+        time: '',
+        notes: ''
+      });
+    }
+  };
+
+  const startEditing = (entry: BowelEntry) => {
+    setEditingId(entry.id);
+    setNewEntry({
+      type: entry.type.toString(),
+      time: entry.time,
+      notes: entry.notes || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: '',
+      time: '',
+      notes: ''
+    });
   };
 
   const getCurrentTime = () => {
@@ -191,7 +202,7 @@ export function BowelTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            {editingId ? 'Edit Bowel Entry' : 'Log Bowel Movement'}
+            Log Bowel Movement
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -343,7 +354,7 @@ export function BowelTracker() {
                         variant="ghost"
                         size="sm"
                         onClick={() => removeEntry(entry.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:text-destructive ml-2"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

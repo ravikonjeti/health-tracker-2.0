@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, Medication, MedicineEntry, WeightEntry, initializeDatabase } from '../lib/database';
+import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, Medication, MedicationLog, WeightEntry, Recipe, StepEntry, WellnessFeelings, SleepEntry, initializeDatabase } from '../lib/database';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 interface HealthDataContextType {
@@ -8,6 +8,12 @@ interface HealthDataContextType {
   addFoodEntry: (entry: Omit<FoodEntry, 'id'>) => Promise<void>;
   deleteFoodEntry: (id: string) => Promise<void>;
   updateFoodEntry: (id: string, entry: Partial<FoodEntry>) => Promise<void>;
+
+  // Recipes (INDEPENDENT)
+  recipes: Recipe[];
+  addRecipe: (recipe: Omit<Recipe, 'id'>) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  updateRecipe: (id: string, recipe: Partial<Recipe>) => Promise<void>;
 
   // Water
   waterEntries: WaterEntry[];
@@ -21,6 +27,12 @@ interface HealthDataContextType {
   deleteExerciseEntry: (id: string) => Promise<void>;
   updateExerciseEntry: (id: string, entry: Partial<ExerciseEntry>) => Promise<void>;
 
+  // Steps (SEPARATE)
+  stepEntries: StepEntry[];
+  addStepEntry: (entry: Omit<StepEntry, 'id'>) => Promise<void>;
+  deleteStepEntry: (id: string) => Promise<void>;
+  updateStepEntry: (id: string, entry: Partial<StepEntry>) => Promise<void>;
+
   // Bowel
   bowelEntries: BowelEntry[];
   addBowelEntry: (entry: Omit<BowelEntry, 'id'>) => Promise<void>;
@@ -33,17 +45,23 @@ interface HealthDataContextType {
   deleteSymptomEntry: (id: string) => Promise<void>;
   updateSymptomEntry: (id: string, entry: Partial<SymptomEntry>) => Promise<void>;
 
-  // Medications
-  medications: Medication[];
-  addMedication: (medication: Omit<Medication, 'id'>) => Promise<void>;
-  deleteMedication: (id: string) => Promise<void>;
-  updateMedication: (id: string, medication: Partial<Medication>) => Promise<void>;
+  // Wellness Feelings (SEPARATE)
+  wellnessFeelings: WellnessFeelings[];
+  addWellnessFeelings: (feelings: Omit<WellnessFeelings, 'id'>) => Promise<void>;
+  deleteWellnessFeelings: (id: string) => Promise<void>;
+  updateWellnessFeelings: (id: string, feelings: Partial<WellnessFeelings>) => Promise<void>;
 
-  // Medicine Entries
-  medicineEntries: MedicineEntry[];
-  addMedicineEntry: (entry: Omit<MedicineEntry, 'id'>) => Promise<void>;
-  deleteMedicineEntry: (id: string) => Promise<void>;
-  updateMedicineEntry: (id: string, entry: Partial<MedicineEntry>) => Promise<void>;
+  // Medications List (PERSISTENT)
+  medications: Medication[];
+  addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
+  deleteMedication: (id: string) => Promise<void>;
+  updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
+
+  // Medication Logs (DAILY)
+  medicationLogs: MedicationLog[];
+  addMedicationLog: (log: Omit<MedicationLog, 'id'>) => Promise<void>;
+  deleteMedicationLog: (id: string) => Promise<void>;
+  updateMedicationLog: (id: string, log: Partial<MedicationLog>) => Promise<void>;
 
   // Weight
   weightEntries: WeightEntry[];
@@ -51,25 +69,38 @@ interface HealthDataContextType {
   deleteWeightEntry: (id: string) => Promise<void>;
   updateWeightEntry: (id: string, entry: Partial<WeightEntry>) => Promise<void>;
 
+  // Sleep (NEW)
+  sleepEntries: SleepEntry[];
+  addSleepEntry: (entry: Omit<SleepEntry, 'id'>) => Promise<void>;
+  deleteSleepEntry: (id: string) => Promise<void>;
+  updateSleepEntry: (id: string, entry: Partial<SleepEntry>) => Promise<void>;
+
   // Settings
   waterGoal: number;
   setWaterGoal: (goal: number) => Promise<void>;
+  weightUnit: 'kg' | 'lb';
+  setWeightUnit: (unit: 'kg' | 'lb') => Promise<void>;
 }
 
 const HealthDataContext = createContext<HealthDataContextType | undefined>(undefined);
 
 export function HealthDataProvider({ children }: { children: ReactNode }) {
   const [waterGoal, setWaterGoalState] = useState(2000);
+  const [weightUnit, setWeightUnitState] = useState<'kg' | 'lb'>('kg');
 
   // Use Dexie's live queries for reactive data
   const foodEntries = useLiveQuery(() => db.foodEntries.toArray()) || [];
+  const recipes = useLiveQuery(() => db.recipes.toArray()) || [];
   const waterEntries = useLiveQuery(() => db.waterEntries.toArray()) || [];
   const exerciseEntries = useLiveQuery(() => db.exerciseEntries.toArray()) || [];
+  const stepEntries = useLiveQuery(() => db.stepEntries.toArray()) || [];
   const bowelEntries = useLiveQuery(() => db.bowelEntries.toArray()) || [];
   const symptomEntries = useLiveQuery(() => db.symptomEntries.toArray()) || [];
+  const wellnessFeelings = useLiveQuery(() => db.wellnessFeelings.toArray()) || [];
   const medications = useLiveQuery(() => db.medications.toArray()) || [];
-  const medicineEntries = useLiveQuery(() => db.medicineEntries.toArray()) || [];
+  const medicationLogs = useLiveQuery(() => db.medicationLogs.toArray()) || [];
   const weightEntries = useLiveQuery(() => db.weightEntries.toArray()) || [];
+  const sleepEntries = useLiveQuery(() => db.sleepEntries.toArray()) || [];
 
   // Initialize database and load settings
   useEffect(() => {
@@ -77,6 +108,7 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
       const settings = await db.settings.toArray();
       if (settings.length > 0) {
         setWaterGoalState(settings[0].dailyWaterGoal);
+        setWeightUnitState(settings[0].weightUnit || 'kg');
       }
     });
   }, []);
@@ -146,30 +178,69 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     await db.symptomEntries.update(id, entry);
   };
 
-  // Medication operations
-  const addMedication = async (medication: Omit<Medication, 'id'>) => {
-    await db.medications.add({ ...medication, id: Date.now().toString() });
+  // Recipe operations
+  const addRecipe = async (recipe: Omit<Recipe, 'id'>) => {
+    await db.recipes.add({ ...recipe, id: Date.now().toString() });
+  };
+
+  const deleteRecipe = async (id: string) => {
+    await db.recipes.delete(id);
+  };
+
+  const updateRecipe = async (id: string, recipe: Partial<Recipe>) => {
+    await db.recipes.update(id, recipe);
+  };
+
+  // Step operations
+  const addStepEntry = async (entry: Omit<StepEntry, 'id'>) => {
+    await db.stepEntries.add({ ...entry, id: Date.now().toString() });
+  };
+
+  const deleteStepEntry = async (id: string) => {
+    await db.stepEntries.delete(id);
+  };
+
+  const updateStepEntry = async (id: string, entry: Partial<StepEntry>) => {
+    await db.stepEntries.update(id, entry);
+  };
+
+  // Wellness operations
+  const addWellnessFeelings = async (feelings: Omit<WellnessFeelings, 'id'>) => {
+    await db.wellnessFeelings.add({ ...feelings, id: Date.now().toString() });
+  };
+
+  const deleteWellnessFeelings = async (id: string) => {
+    await db.wellnessFeelings.delete(id);
+  };
+
+  const updateWellnessFeelings = async (id: string, feelings: Partial<WellnessFeelings>) => {
+    await db.wellnessFeelings.update(id, feelings);
+  };
+
+  // Medication list operations
+  const addMedication = async (med: Omit<Medication, 'id'>) => {
+    await db.medications.add({ ...med, id: Date.now().toString() });
   };
 
   const deleteMedication = async (id: string) => {
     await db.medications.delete(id);
   };
 
-  const updateMedication = async (id: string, medication: Partial<Medication>) => {
-    await db.medications.update(id, medication);
+  const updateMedication = async (id: string, med: Partial<Medication>) => {
+    await db.medications.update(id, med);
   };
 
-  // Medicine Entry operations
-  const addMedicineEntry = async (entry: Omit<MedicineEntry, 'id'>) => {
-    await db.medicineEntries.add({ ...entry, id: Date.now().toString() });
+  // Medication log operations
+  const addMedicationLog = async (log: Omit<MedicationLog, 'id'>) => {
+    await db.medicationLogs.add({ ...log, id: Date.now().toString() });
   };
 
-  const deleteMedicineEntry = async (id: string) => {
-    await db.medicineEntries.delete(id);
+  const deleteMedicationLog = async (id: string) => {
+    await db.medicationLogs.delete(id);
   };
 
-  const updateMedicineEntry = async (id: string, entry: Partial<MedicineEntry>) => {
-    await db.medicineEntries.update(id, entry);
+  const updateMedicationLog = async (id: string, log: Partial<MedicationLog>) => {
+    await db.medicationLogs.update(id, log);
   };
 
   // Weight operations
@@ -185,6 +256,19 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     await db.weightEntries.update(id, entry);
   };
 
+  // Sleep operations
+  const addSleepEntry = async (entry: Omit<SleepEntry, 'id'>) => {
+    await db.sleepEntries.add({ ...entry, id: Date.now().toString() });
+  };
+
+  const deleteSleepEntry = async (id: string) => {
+    await db.sleepEntries.delete(id);
+  };
+
+  const updateSleepEntry = async (id: string, entry: Partial<SleepEntry>) => {
+    await db.sleepEntries.update(id, entry);
+  };
+
   // Settings operations
   const setWaterGoal = async (goal: number) => {
     const settings = await db.settings.toArray();
@@ -194,6 +278,14 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     setWaterGoalState(goal);
   };
 
+  const setWeightUnit = async (unit: 'kg' | 'lb') => {
+    const settings = await db.settings.toArray();
+    if (settings.length > 0) {
+      await db.settings.update(settings[0].id!, { weightUnit: unit });
+    }
+    setWeightUnitState(unit);
+  };
+
   return (
     <HealthDataContext.Provider
       value={{
@@ -201,6 +293,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
         addFoodEntry,
         deleteFoodEntry,
         updateFoodEntry,
+        recipes,
+        addRecipe,
+        deleteRecipe,
+        updateRecipe,
         waterEntries,
         addWaterEntry,
         deleteWaterEntry,
@@ -209,6 +305,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
         addExerciseEntry,
         deleteExerciseEntry,
         updateExerciseEntry,
+        stepEntries,
+        addStepEntry,
+        deleteStepEntry,
+        updateStepEntry,
         bowelEntries,
         addBowelEntry,
         deleteBowelEntry,
@@ -217,20 +317,30 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
         addSymptomEntry,
         deleteSymptomEntry,
         updateSymptomEntry,
+        wellnessFeelings,
+        addWellnessFeelings,
+        deleteWellnessFeelings,
+        updateWellnessFeelings,
         medications,
         addMedication,
         deleteMedication,
         updateMedication,
-        medicineEntries,
-        addMedicineEntry,
-        deleteMedicineEntry,
-        updateMedicineEntry,
+        medicationLogs,
+        addMedicationLog,
+        deleteMedicationLog,
+        updateMedicationLog,
         weightEntries,
         addWeightEntry,
         deleteWeightEntry,
         updateWeightEntry,
+        sleepEntries,
+        addSleepEntry,
+        deleteSleepEntry,
+        updateSleepEntry,
         waterGoal,
         setWaterGoal,
+        weightUnit,
+        setWeightUnit,
       }}
     >
       {children}

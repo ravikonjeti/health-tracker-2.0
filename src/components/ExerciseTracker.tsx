@@ -10,10 +10,20 @@ import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
-import { ExerciseEntry } from '../lib/database';
+import { ExerciseEntry, StepEntry } from '../lib/database';
 
 export function ExerciseTracker() {
-  const { exerciseEntries: entries, addExerciseEntry, deleteExerciseEntry, updateExerciseEntry } = useHealthData();
+  const {
+    exerciseEntries,
+    addExerciseEntry,
+    updateExerciseEntry,
+    deleteExerciseEntry,
+    stepEntries,
+    addStepEntry,
+    updateStepEntry,
+    deleteStepEntry
+  } = useHealthData();
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
@@ -54,7 +64,7 @@ export function ExerciseTracker() {
 
   const getEntriesForDate = (date: Date): ExerciseEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return exerciseEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -76,34 +86,10 @@ export function ExerciseTracker() {
     return formatDate(date) === formatDate(today);
   };
 
-  const startEditing = (entry: ExerciseEntry) => {
-    setEditingId(entry.id!);
-    setNewEntry({
-      type: entry.type,
-      name: entry.name,
-      duration: entry.duration.toString(),
-      intensity: entry.intensity,
-      notes: entry.notes || '',
-      time: entry.time
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setNewEntry({
-      type: 'cardio',
-      name: '',
-      duration: '',
-      intensity: 'moderate',
-      notes: '',
-      time: ''
-    });
-  };
-
   const addEntry = async () => {
     if (newEntry.name && newEntry.duration && newEntry.time) {
       if (editingId) {
+        // Update existing entry
         await updateExerciseEntry(editingId, {
           name: newEntry.name,
           type: newEntry.type,
@@ -115,6 +101,7 @@ export function ExerciseTracker() {
         });
         setEditingId(null);
       } else {
+        // Add new entry
         await addExerciseEntry({
           name: newEntry.name,
           type: newEntry.type,
@@ -138,6 +125,42 @@ export function ExerciseTracker() {
 
   const removeEntry = async (id: string) => {
     await deleteExerciseEntry(id);
+    if (editingId === id) {
+      setEditingId(null);
+      setNewEntry({
+        type: 'cardio',
+        name: '',
+        duration: '',
+        intensity: 'moderate',
+        notes: '',
+        time: ''
+      });
+    }
+  };
+
+  const startEditing = (entry: ExerciseEntry) => {
+    setEditingId(entry.id || '');
+    setNewEntry({
+      type: entry.type,
+      name: entry.name,
+      duration: entry.duration.toString(),
+      intensity: entry.intensity,
+      notes: entry.notes || '',
+      time: entry.time
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: 'cardio',
+      name: '',
+      duration: '',
+      intensity: 'moderate',
+      notes: '',
+      time: ''
+    });
   };
 
   const getCurrentTime = () => {
@@ -214,8 +237,8 @@ export function ExerciseTracker() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Dumbbell className="h-5 w-5" style={{ color: '#CD7F32' }} />
-            {editingId ? 'Edit Exercise Entry' : 'Log Exercise'}
+            <Plus className="h-5 w-5" />
+            Log Exercise
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -319,7 +342,7 @@ export function ExerciseTracker() {
 
           <div className="flex gap-2">
             <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
-              {editingId ? 'Update Entry' : 'Add Exercise'}
+              {editingId ? 'Update Exercise' : 'Add Exercise'}
             </Button>
             {editingId && (
               <Button
@@ -384,7 +407,7 @@ export function ExerciseTracker() {
                       variant="ghost"
                       size="sm"
                       onClick={() => startEditing(entry)}
-                      className="text-primary hover:text-primary ml-2"
+                      className="text-primary hover:text-primary"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -392,7 +415,7 @@ export function ExerciseTracker() {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeEntry(entry.id)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

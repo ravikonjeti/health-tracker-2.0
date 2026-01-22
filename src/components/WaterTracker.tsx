@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { Progress } from './ui/progress';
 import { Label } from './ui/label';
-import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -12,12 +12,12 @@ import { useHealthData } from '../contexts/HealthDataContext';
 import { WaterEntry } from '../lib/database';
 
 export function WaterTracker() {
-  const { waterEntries: entries, addWaterEntry, deleteWaterEntry, updateWaterEntry, waterGoal: dailyGoal, setWaterGoal: setDailyGoal } = useHealthData();
+  const { waterEntries, addWaterEntry, updateWaterEntry, deleteWaterEntry, waterGoal, setWaterGoal } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [isMetric, setIsMetric] = useState(false); // false = OZ (default), true = ML
-  const [editAmount, setEditAmount] = useState<number>(0);
-  const [editTime, setEditTime] = useState<string>('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editTime, setEditTime] = useState('');
   
   // Conversion functions
   const mlToOz = (ml: number) => Math.round((ml / 29.5735) * 10) / 10;
@@ -63,7 +63,7 @@ export function WaterTracker() {
 
   const getEntriesForDate = (date: Date): WaterEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return waterEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -75,51 +75,52 @@ export function WaterTracker() {
   const currentDateEntries = getEntriesForDate(selectedDate);
   const waterIntake = getWaterIntakeForDate(selectedDate);
 
-  const startEditing = (entry: WaterEntry) => {
-    setEditingId(entry.id!);
-    setEditAmount(entry.amount);
-    setEditTime(entry.time);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const addWater = (amount: number) => {
+    const now = new Date();
+    addWaterEntry({
+      amount,
+      time: now.toTimeString().slice(0, 5),
+      date: formatDate(selectedDate)
+    });
   };
 
-  const cancelEditing = () => {
-    setEditingId(null);
-    setEditAmount(0);
-    setEditTime('');
-  };
-
-  const addWater = async (amount: number) => {
-    if (editingId) {
-      await updateWaterEntry(editingId, {
-        amount: editAmount,
-        time: editTime,
-        date: formatDate(selectedDate)
-      });
-      setEditingId(null);
-      setEditAmount(0);
-      setEditTime('');
-    } else {
-      const now = new Date();
-      await addWaterEntry({
-        amount,
-        time: now.toTimeString().slice(0, 5),
-        date: formatDate(selectedDate)
-      });
-    }
-  };
-
-  const removeWater = async (amount: number) => {
+  const removeWater = (amount: number) => {
     // Remove the most recent entry for the selected date that matches or is closest to the amount
     const currentEntries = getEntriesForDate(selectedDate);
     if (currentEntries.length === 0) return;
 
     // Find the most recent entry
     const lastEntry = currentEntries[currentEntries.length - 1];
-    await deleteWaterEntry(lastEntry.id!);
+    if (lastEntry.id) {
+      deleteWaterEntry(lastEntry.id);
+    }
   };
 
-  const deleteEntry = async (id: string) => {
-    await deleteWaterEntry(id);
+  const deleteEntry = (id: string) => {
+    deleteWaterEntry(id);
+    if (editingId === id) {
+      cancelEditing();
+    }
+  };
+
+  const startEditing = (entry: WaterEntry) => {
+    setEditingId(entry.id);
+    setEditAmount(isMetric ? entry.amount.toString() : mlToOz(entry.amount).toString());
+    setEditTime(entry.time);
+  };
+
+  const updateEntry = () => {
+    if (editingId && editAmount && editTime) {
+      const amountInMl = isMetric ? parseInt(editAmount) : ozToMl(parseFloat(editAmount));
+      updateWaterEntry(editingId, { amount: amountInMl, time: editTime });
+      cancelEditing();
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditAmount('');
+    setEditTime('');
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -137,7 +138,7 @@ export function WaterTracker() {
     return formatDate(date) === formatDate(today);
   };
 
-  const progressPercentage = Math.min((waterIntake / dailyGoal) * 100, 100);
+  const progressPercentage = Math.min((waterIntake / waterGoal) * 100, 100);
 
   // Quick amounts based on unit
   const quickAmounts = isMetric 
@@ -201,117 +202,71 @@ export function WaterTracker() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-blue-500" />
-              {editingId ? 'Edit Water Entry' : 'Water Intake'}
+              Water Intake
             </div>
-            {!editingId && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="unit-toggle" className="text-sm">
-                  {isMetric ? 'ML' : 'OZ'}
-                </Label>
-                <Switch
-                  id="unit-toggle"
-                  checked={isMetric}
-                  onCheckedChange={setIsMetric}
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="unit-toggle" className="text-sm">
+                {isMetric ? 'ML' : 'OZ'}
+              </Label>
+              <Switch
+                id="unit-toggle"
+                checked={isMetric}
+                onCheckedChange={setIsMetric}
+              />
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {editingId ? (
-            <>
-              <div>
-                <Label htmlFor="edit-amount">Amount ({isMetric ? 'ml' : 'oz'})</Label>
-                <Input
-                  id="edit-amount"
-                  type="number"
-                  value={isMetric ? editAmount : mlToOz(editAmount)}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setEditAmount(isMetric ? value : ozToMl(value));
-                  }}
-                  placeholder={`Enter amount in ${isMetric ? 'ml' : 'oz'}`}
-                />
-              </div>
+          <div className="text-center space-y-2">
+            <div className="text-3xl text-blue-500">{formatAmount(waterIntake)}</div>
+            <div className="text-sm text-muted-foreground">
+              of {formatGoal(waterGoal)} goal
+            </div>
+            <Progress 
+              value={progressPercentage} 
+              className="h-3 bg-blue-100 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600" 
+            />
+            <div className="text-sm text-muted-foreground">
+              {Math.round(progressPercentage)}% complete
+            </div>
+          </div>
 
-              <div>
-                <Label htmlFor="edit-time">Time</Label>
-                <Input
-                  id="edit-time"
-                  type="time"
-                  value={editTime}
-                  onChange={(e) => setEditTime(e.target.value)}
-                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => addWater(0)} className="flex-1">
-                  Update Entry
-                </Button>
+          <div className="space-y-2">
+            <Label>Quick Add</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {quickAmounts.map((amount, index) => (
                 <Button
+                  key={amount}
                   variant="outline"
-                  onClick={cancelEditing}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-center space-y-2">
-                <div className="text-3xl text-blue-500">{formatAmount(waterIntake)}</div>
-                <div className="text-sm text-muted-foreground">
-                  of {formatGoal(dailyGoal)} goal
-                </div>
-                <Progress
-                  value={progressPercentage}
-                  className="h-3 bg-blue-100 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-blue-600"
-                />
-                <div className="text-sm text-muted-foreground">
-                  {Math.round(progressPercentage)}% complete
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Quick Add</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {quickAmounts.map((amount, index) => (
-                    <Button
-                      key={amount}
-                      variant="outline"
-                      onClick={() => addWater(amount)}
-                      className="flex items-center gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      {quickAmountLabels[index]}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => removeWater(removeAmount)}
-                  className="flex-1 flex items-center gap-1"
-                  disabled={waterIntake === 0}
-                >
-                  <Minus className="h-4 w-4" />
-                  Remove {isMetric ? '250ml' : '8oz'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setDailyGoal(dailyGoal === 2000 ? 2500 : 2000)}
+                  onClick={() => addWater(amount)}
                   className="flex items-center gap-1"
                 >
-                  <Target className="h-4 w-4" />
-                  Goal: {formatGoal(dailyGoal === 2000 ? 2500 : 2000)}
+                  <Plus className="h-4 w-4" />
+                  {quickAmountLabels[index]}
                 </Button>
-              </div>
-            </>
-          )}
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => removeWater(removeAmount)}
+              className="flex-1 flex items-center gap-1"
+              disabled={waterIntake === 0}
+            >
+              <Minus className="h-4 w-4" />
+              Remove {isMetric ? '250ml' : '8oz'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setWaterGoal(waterGoal === 2000 ? 2500 : 2000)}
+              className="flex items-center gap-1"
+            >
+              <Target className="h-4 w-4" />
+              Goal: {formatGoal(waterGoal === 2000 ? 2500 : 2000)}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -339,18 +294,18 @@ export function WaterTracker() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => startEditing(entry)}
-                        className="text-primary hover:text-primary h-6 w-6 p-0"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
                         onClick={() => deleteEntry(entry.id)}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-6 w-6 p-0"
                       >
                         <Trash2 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => startEditing(entry)}
+                        className="text-primary hover:text-primary hover:bg-primary/10 h-6 w-6 p-0"
+                      >
+                        <Pencil className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -372,11 +327,54 @@ export function WaterTracker() {
         </Button>
       )}
 
-      {waterIntake >= dailyGoal && (
+      {waterIntake >= waterGoal && (
         <Card className="bg-green-50 border-green-200">
           <CardContent className="pt-4 text-center">
             <div className="text-green-600 mb-2">🎉 Congratulations!</div>
             <p className="text-green-700">You've reached your daily water goal!</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Entry Form */}
+      {editingId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Entry</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Amount ({isMetric ? 'ml' : 'oz'})</Label>
+              <Input
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                placeholder={isMetric ? "250" : "8"}
+              />
+            </div>
+            <div>
+              <Label>Time</Label>
+              <Input
+                type="time"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={updateEntry}
+                className="flex-1"
+              >
+                Update Entry
+              </Button>
+              <Button
+                variant="outline"
+                onClick={cancelEditing}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

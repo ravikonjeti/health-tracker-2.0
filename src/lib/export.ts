@@ -8,16 +8,20 @@ import { Capacitor } from '@capacitor/core';
 // Export all data as JSON
 export async function exportAllDataAsJSON(): Promise<void> {
   const data = {
-    version: '2.0',
+    version: '3.0',
     exportDate: new Date().toISOString(),
     foodEntries: await db.foodEntries.toArray(),
+    recipes: await db.recipes.toArray(),
     waterEntries: await db.waterEntries.toArray(),
     exerciseEntries: await db.exerciseEntries.toArray(),
+    stepEntries: await db.stepEntries.toArray(),
     bowelEntries: await db.bowelEntries.toArray(),
     symptomEntries: await db.symptomEntries.toArray(),
+    wellnessFeelings: await db.wellnessFeelings.toArray(),
     medications: await db.medications.toArray(),
-    medicineEntries: await db.medicineEntries.toArray(),
+    medicationLogs: await db.medicationLogs.toArray(),
     weightEntries: await db.weightEntries.toArray(),
+    sleepEntries: await db.sleepEntries.toArray(),
     settings: await db.settings.toArray()
   };
 
@@ -102,10 +106,13 @@ export async function exportUnifiedCSV(): Promise<void> {
   const foodEntries = await db.foodEntries.toArray();
   const waterEntries = await db.waterEntries.toArray();
   const exerciseEntries = await db.exerciseEntries.toArray();
+  const stepEntries = await db.stepEntries.toArray();
   const bowelEntries = await db.bowelEntries.toArray();
   const symptomEntries = await db.symptomEntries.toArray();
-  const medicineEntries = await db.medicineEntries.toArray();
+  const wellnessFeelings = await db.wellnessFeelings.toArray();
+  const medicationLogs = await db.medicationLogs.toArray();
   const weightEntries = await db.weightEntries.toArray();
+  const sleepEntries = await db.sleepEntries.toArray();
 
   // Create unified rows with category column
   const allRows: Array<[string, string, string, string]> = [];
@@ -127,9 +134,15 @@ export async function exportUnifiedCSV(): Promise<void> {
     allRows.push([e.date, e.time, 'Exercise', details]);
   });
 
+  // Step entries
+  stepEntries.forEach(e => {
+    allRows.push([e.date, '', 'Steps', `${e.steps} steps`]);
+  });
+
   // Bowel entries
   bowelEntries.forEach(e => {
-    const details = `Type ${e.type}${e.notes ? ` | ${e.notes}` : ''}`;
+    const typeDesc = e.type === 8 ? 'Other' : `Type ${e.type}`;
+    const details = `${typeDesc}${e.notes ? ` | ${e.notes}` : ''}`;
     allRows.push([e.date, e.time, 'Bowel', details]);
   });
 
@@ -139,16 +152,45 @@ export async function exportUnifiedCSV(): Promise<void> {
     allRows.push([e.date, e.time, 'Symptom', details]);
   });
 
-  // Medicine entries
-  medicineEntries.forEach(e => {
+  // Wellness feelings
+  wellnessFeelings.forEach(e => {
+    const feelings = [];
+    if (e.overall) feelings.push(`Overall: ${e.overall}`);
+    if (e.morning) feelings.push(`Morning: ${e.morning}`);
+    if (e.afternoon) feelings.push(`Afternoon: ${e.afternoon}`);
+    if (e.evening) feelings.push(`Evening: ${e.evening}`);
+    allRows.push([e.date, '', 'Wellness', feelings.join(' | ')]);
+  });
+
+  // Medication logs
+  medicationLogs.forEach(e => {
     const details = `${e.medicationName} | ${e.dosage}${e.notes ? ` | ${e.notes}` : ''}`;
     allRows.push([e.date, e.time, 'Medicine', details]);
   });
 
   // Weight entries
   weightEntries.forEach(e => {
-    const details = `${e.weight}${e.unit}${e.bodyFat ? ` | Body Fat: ${e.bodyFat}%` : ''}${e.water ? ` | Water: ${e.water}%` : ''}${e.muscleMass ? ` | Muscle: ${e.muscleMass}lbs` : ''}${e.bmi ? ` | BMI: ${e.bmi}` : ''}${e.boneMass ? ` | Bone: ${e.boneMass}${e.unit}` : ''}`;
+    const details = `${e.weight}${e.unit}${e.bodyFat ? ` | Body Fat: ${e.bodyFat}%` : ''}${e.water ? ` | Water: ${e.water}%` : ''}${e.muscleMass ? ` | Muscle: ${e.muscleMass}lbs` : ''}${e.bmi ? ` | BMI: ${e.bmi}` : ''}${e.boneMass ? ` | Bone: ${e.boneMass}${e.unit}` : ''}${e.notes ? ` | ${e.notes}` : ''}`;
     allRows.push([e.date, e.time, 'Weight', details]);
+  });
+
+  // Sleep entries
+  sleepEntries.forEach(e => {
+    const calculateDuration = (bedTime: string, wakeTime: string): string => {
+      const [bedHour, bedMin] = bedTime.split(':').map(Number);
+      const [wakeHour, wakeMin] = wakeTime.split(':').map(Number);
+      let bedMinutes = bedHour * 60 + bedMin;
+      let wakeMinutes = wakeHour * 60 + wakeMin;
+      if (wakeMinutes <= bedMinutes) wakeMinutes += 24 * 60;
+      const totalMinutes = wakeMinutes - bedMinutes;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours}h ${minutes}m`;
+    };
+
+    const duration = calculateDuration(e.bedTime, e.wakeTime);
+    const details = `Bed: ${e.bedTime} | Wake: ${e.wakeTime} | Duration: ${duration} | Quality: ${e.sleepQuality}/5 | Mood: ${e.mood}${e.snoring ? ' | Snoring' : ''}${e.interruptions ? ` | Interruptions: ${e.interruptions}` : ''}${e.napDuration ? ` | Nap: ${e.napDuration}min` : ''}${e.notes ? ` | ${e.notes}` : ''}`;
+    allRows.push([e.date, e.bedTime, 'Sleep', details]);
   });
 
   // Sort all rows by date and time (chronologically)
@@ -259,14 +301,28 @@ export async function importDataFromJSON(file: File): Promise<boolean> {
     if (data.symptomEntries) {
       await db.symptomEntries.bulkAdd(data.symptomEntries);
     }
+    if (data.recipes) {
+      await db.recipes.bulkAdd(data.recipes);
+    }
+    if (data.stepEntries) {
+      await db.stepEntries.bulkAdd(data.stepEntries);
+    }
+    if (data.wellnessFeelings) {
+      await db.wellnessFeelings.bulkAdd(data.wellnessFeelings);
+    }
     if (data.medications) {
       await db.medications.bulkAdd(data.medications);
     }
-    if (data.medicineEntries) {
-      await db.medicineEntries.bulkAdd(data.medicineEntries);
+    if (data.medicineEntries || data.medicationLogs) {
+      // Handle both old and new naming
+      const logs = data.medicationLogs || data.medicineEntries;
+      await db.medicationLogs.bulkAdd(logs);
     }
     if (data.weightEntries) {
       await db.weightEntries.bulkAdd(data.weightEntries);
+    }
+    if (data.sleepEntries) {
+      await db.sleepEntries.bulkAdd(data.sleepEntries);
     }
 
     return true;

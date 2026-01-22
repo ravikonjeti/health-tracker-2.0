@@ -10,7 +10,7 @@ import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Plus, Trash2, Clock, AlertTriangle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
-import { SymptomEntry } from '../lib/database';
+import { SymptomEntry, WellnessFeelings } from '../lib/database';
 
 const commonSymptoms = [
   'Headache',
@@ -29,7 +29,17 @@ const commonSymptoms = [
 ];
 
 export function SymptomsTracker() {
-  const { symptomEntries: entries, addSymptomEntry, deleteSymptomEntry, updateSymptomEntry } = useHealthData();
+  const {
+    symptomEntries,
+    addSymptomEntry,
+    updateSymptomEntry,
+    deleteSymptomEntry,
+    wellnessFeelings,
+    addWellnessFeelings,
+    updateWellnessFeelings,
+    deleteWellnessFeelings
+  } = useHealthData();
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
@@ -69,7 +79,7 @@ export function SymptomsTracker() {
 
   const getEntriesForDate = (date: Date): SymptomEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return symptomEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -91,8 +101,48 @@ export function SymptomsTracker() {
     return formatDate(date) === formatDate(today);
   };
 
+  const addEntry = async () => {
+    if (newEntry.symptom && newEntry.time && newEntry.description) {
+      if (editingId) {
+        // Update existing entry
+        await updateSymptomEntry(editingId, {
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+        setEditingId(null);
+      } else {
+        // Add new entry
+        await addSymptomEntry({
+          ...newEntry,
+          date: formatDate(selectedDate)
+        });
+      }
+      setNewEntry({
+        symptom: '',
+        severity: 'mild',
+        time: '',
+        description: '',
+        triggers: ''
+      });
+    }
+  };
+
+  const removeEntry = async (id: string) => {
+    await deleteSymptomEntry(id);
+    if (editingId === id) {
+      setEditingId(null);
+      setNewEntry({
+        symptom: '',
+        severity: 'mild',
+        time: '',
+        description: '',
+        triggers: ''
+      });
+    }
+  };
+
   const startEditing = (entry: SymptomEntry) => {
-    setEditingId(entry.id!);
+    setEditingId(entry.id);
     setNewEntry({
       symptom: entry.symptom,
       severity: entry.severity,
@@ -112,34 +162,6 @@ export function SymptomsTracker() {
       description: '',
       triggers: ''
     });
-  };
-
-  const addEntry = async () => {
-    if (newEntry.symptom && newEntry.time && newEntry.description) {
-      if (editingId) {
-        await updateSymptomEntry(editingId, {
-          ...newEntry,
-          date: formatDate(selectedDate)
-        });
-        setEditingId(null);
-      } else {
-        await addSymptomEntry({
-          ...newEntry,
-          date: formatDate(selectedDate)
-        });
-      }
-      setNewEntry({
-        symptom: '',
-        severity: 'mild',
-        time: '',
-        description: '',
-        triggers: ''
-      });
-    }
-  };
-
-  const removeEntry = async (id: string) => {
-    await deleteSymptomEntry(id);
   };
 
   const getCurrentTime = () => {
@@ -213,7 +235,7 @@ export function SymptomsTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            {editingId ? 'Edit Symptom Entry' : 'Log Symptom'}
+            Log Symptom
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -300,7 +322,7 @@ export function SymptomsTracker() {
 
           <div className="flex gap-2">
             <Button onClick={addEntry} className={editingId ? "flex-1" : "w-full"}>
-              {editingId ? 'Update Entry' : 'Add Symptom'}
+              {editingId ? 'Update Symptom' : 'Add Symptom'}
             </Button>
             {editingId && (
               <Button
@@ -359,7 +381,7 @@ export function SymptomsTracker() {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeEntry(entry.id)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:text-destructive ml-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

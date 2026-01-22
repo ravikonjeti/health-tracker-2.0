@@ -13,7 +13,7 @@ import { useHealthData } from '../contexts/HealthDataContext';
 import { FoodEntry } from '../lib/database';
 
 export function FoodTracker() {
-  const { foodEntries: entries, addFoodEntry, deleteFoodEntry, updateFoodEntry } = useHealthData();
+  const { foodEntries, addFoodEntry, updateFoodEntry, deleteFoodEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
@@ -76,41 +76,17 @@ export function FoodTracker() {
     });
   };
 
-  const startEditing = (entry: FoodEntry) => {
-    setEditingId(entry.id!);
-    setNewEntry({
-      type: entry.type,
-      description: entry.description,
-      time: entry.time,
-      portion: entry.portion || '',
-      ingredients: entry.ingredients || [],
-      notes: entry.notes || ''
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setNewEntry({
-      type: 'breakfast',
-      description: '',
-      time: '',
-      portion: '',
-      ingredients: [],
-      notes: ''
-    });
-    setNewIngredient('');
-  };
-
   const addEntry = async () => {
     if (newEntry.description && newEntry.time) {
       if (editingId) {
+        // Update existing entry
         await updateFoodEntry(editingId, {
           ...newEntry,
           date: formatDate(selectedDate)
         });
         setEditingId(null);
       } else {
+        // Add new entry
         await addFoodEntry({
           ...newEntry,
           date: formatDate(selectedDate)
@@ -130,6 +106,44 @@ export function FoodTracker() {
 
   const removeEntry = async (id: string) => {
     await deleteFoodEntry(id);
+    if (editingId === id) {
+      setEditingId(null);
+      setNewEntry({
+        type: 'breakfast',
+        description: '',
+        time: '',
+        portion: '',
+        ingredients: [],
+        notes: ''
+      });
+    }
+  };
+
+  const startEditing = (entry: FoodEntry) => {
+    setEditingId(entry.id || null);
+    setNewEntry({
+      type: entry.type,
+      description: entry.description,
+      time: entry.time,
+      portion: entry.portion || '',
+      ingredients: entry.ingredients,
+      notes: entry.notes || ''
+    });
+    // Scroll to top to show the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewEntry({
+      type: 'breakfast',
+      description: '',
+      time: '',
+      portion: '',
+      ingredients: [],
+      notes: ''
+    });
+    setNewIngredient('');
   };
 
   const getCurrentTime = () => {
@@ -166,7 +180,7 @@ export function FoodTracker() {
 
   const getEntriesForDate = (date: Date): FoodEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return foodEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -279,7 +293,7 @@ export function FoodTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Utensils className="h-5 w-5" style={{ color: '#CD7F32' }} />
-            {editingId ? 'Edit Food Entry' : 'Add Food Entry'}
+            Food Entry
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -474,15 +488,15 @@ export function FoodTracker() {
                       variant="ghost"
                       size="sm"
                       onClick={() => startEditing(entry)}
-                      className="text-primary hover:text-primary ml-2"
+                      className="text-primary hover:text-primary hover:bg-primary/10 ml-2"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeEntry(entry.id!)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeEntry(entry.id)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

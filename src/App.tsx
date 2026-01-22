@@ -6,11 +6,12 @@ import { BowelTracker } from './components/BowelTracker';
 import { SymptomsTracker } from './components/SymptomsTracker';
 import { MedicationsTracker } from './components/MedicationsTracker';
 import { WeightTracker } from './components/WeightTracker';
+import { SleepTracker } from './components/SleepTracker';
 import { InsightsTracker } from './components/InsightsTracker';
 import { ExportModal } from './components/ExportModal';
 import { ImportModal } from './components/ImportModal';
 import { InstallPrompt } from './components/InstallPrompt';
-import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, Pill, Scale, TrendingUp } from 'lucide-react';
+import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, Pill, Scale, Moon, TrendingUp } from 'lucide-react';
 
 export default function App() {
   return (
@@ -31,29 +32,32 @@ export default function App() {
 
         <Tabs defaultValue="food" className="w-full">
           <TabsList className="flex justify-between w-full mb-4 h-auto gap-1 p-2 bg-gray-100 dark:bg-gray-800">
-            <TabsTrigger value="food" className="p-3 h-auto min-h-0 flex-1" title="Food">
-              <Utensils className="h-5 w-5" />
+            <TabsTrigger value="food" className="p-2 h-auto min-h-0 flex-1" title="Food">
+              <Utensils className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="water" className="p-3 h-auto min-h-0 flex-1" title="Water">
-              <Droplets className="h-5 w-5" />
+            <TabsTrigger value="water" className="p-2 h-auto min-h-0 flex-1" title="Water">
+              <Droplets className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="exercise" className="p-3 h-auto min-h-0 flex-1" title="Exercise">
-              <Dumbbell className="h-5 w-5" />
+            <TabsTrigger value="exercise" className="p-2 h-auto min-h-0 flex-1" title="Exercise">
+              <Dumbbell className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="bowel" className="p-3 h-auto min-h-0 flex-1" title="Bowel">
-              <Heart className="h-5 w-5" />
+            <TabsTrigger value="bowel" className="p-2 h-auto min-h-0 flex-1" title="Bowel">
+              <Heart className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="symptoms" className="p-3 h-auto min-h-0 flex-1" title="Symptoms">
-              <Stethoscope className="h-5 w-5" />
+            <TabsTrigger value="symptoms" className="p-2 h-auto min-h-0 flex-1" title="Symptoms">
+              <Stethoscope className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="medicine" className="p-3 h-auto min-h-0 flex-1" title="Medicine">
-              <Pill className="h-5 w-5" />
+            <TabsTrigger value="medicine" className="p-2 h-auto min-h-0 flex-1" title="Medicine">
+              <Pill className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="weight" className="p-3 h-auto min-h-0 flex-1" title="Weight">
-              <Scale className="h-5 w-5" />
+            <TabsTrigger value="weight" className="p-2 h-auto min-h-0 flex-1" title="Weight">
+              <Scale className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="insights" className="p-3 h-auto min-h-0 flex-1" title="Insights">
-              <TrendingUp className="h-5 w-5" />
+            <TabsTrigger value="sleep" className="p-2 h-auto min-h-0 flex-1" title="Sleep">
+              <Moon className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="insights" className="p-2 h-auto min-h-0 flex-1" title="Insights">
+              <TrendingUp className="h-4 w-4" />
             </TabsTrigger>
           </TabsList>
 
@@ -83,6 +87,10 @@ export default function App() {
 
           <TabsContent value="weight">
             <WeightTracker />
+          </TabsContent>
+
+          <TabsContent value="sleep">
+            <SleepTracker />
           </TabsContent>
 
           <TabsContent value="insights">

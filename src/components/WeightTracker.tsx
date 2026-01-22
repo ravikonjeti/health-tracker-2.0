@@ -6,25 +6,13 @@ import { Label } from './ui/label';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Scale, TrendingDown, TrendingUp, Minus } from 'lucide-react';
-
-interface WeightEntry {
-  id: string;
-  weight: number;
-  unit: 'kg' | 'lb';
-  time: string;
-  date: string; // YYYY-MM-DD format
-  bodyFat?: number;
-  water?: number;
-  muscleMass?: number;
-  boneMass?: number;
-  bmi?: number;
-}
+import { useHealthData } from '../contexts/HealthDataContext';
+import { WeightEntry } from '../lib/database';
 
 export function WeightTracker() {
-  const [entries, setEntries] = useState<WeightEntry[]>([]);
+  const { weightEntries, weightUnit, setWeightUnit, addWeightEntry, updateWeightEntry, deleteWeightEntry } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [unit, setUnit] = useState<'kg' | 'lb'>('kg');
   
   const [newEntry, setNewEntry] = useState({
     weight: '',
@@ -67,7 +55,7 @@ export function WeightTracker() {
 
   const getEntriesForDate = (date: Date): WeightEntry[] => {
     const dateStr = formatDate(date);
-    return entries
+    return weightEntries
       .filter(entry => entry.date === dateStr)
       .sort((a, b) => b.time.localeCompare(a.time));
   };
@@ -95,40 +83,25 @@ export function WeightTracker() {
     return now.toTimeString().slice(0, 5);
   };
 
-  const addEntry = () => {
+  const addEntry = async () => {
     if (newEntry.weight && newEntry.time) {
+      const entryData = {
+        weight: parseFloat(newEntry.weight),
+        unit: weightUnit,
+        time: newEntry.time,
+        date: formatDate(selectedDate),
+        bodyFat: newEntry.bodyFat ? parseFloat(newEntry.bodyFat) : undefined,
+        water: newEntry.water ? parseFloat(newEntry.water) : undefined,
+        muscleMass: newEntry.muscleMass ? parseFloat(newEntry.muscleMass) : undefined,
+        boneMass: newEntry.boneMass ? parseFloat(newEntry.boneMass) : undefined,
+        bmi: newEntry.bmi ? parseFloat(newEntry.bmi) : undefined
+      };
+
       if (editingId) {
-        setEntries(entries.map(entry =>
-          entry.id === editingId
-            ? {
-                ...entry,
-                weight: parseFloat(newEntry.weight),
-                unit: unit,
-                time: newEntry.time,
-                date: formatDate(selectedDate),
-                bodyFat: newEntry.bodyFat ? parseFloat(newEntry.bodyFat) : undefined,
-                water: newEntry.water ? parseFloat(newEntry.water) : undefined,
-                muscleMass: newEntry.muscleMass ? parseFloat(newEntry.muscleMass) : undefined,
-                boneMass: newEntry.boneMass ? parseFloat(newEntry.boneMass) : undefined,
-                bmi: newEntry.bmi ? parseFloat(newEntry.bmi) : undefined
-              }
-            : entry
-        ));
+        await updateWeightEntry(editingId, entryData);
         setEditingId(null);
       } else {
-        const entry: WeightEntry = {
-          id: Date.now().toString(),
-          weight: parseFloat(newEntry.weight),
-          unit: unit,
-          time: newEntry.time,
-          date: formatDate(selectedDate),
-          bodyFat: newEntry.bodyFat ? parseFloat(newEntry.bodyFat) : undefined,
-          water: newEntry.water ? parseFloat(newEntry.water) : undefined,
-          muscleMass: newEntry.muscleMass ? parseFloat(newEntry.muscleMass) : undefined,
-          boneMass: newEntry.boneMass ? parseFloat(newEntry.boneMass) : undefined,
-          bmi: newEntry.bmi ? parseFloat(newEntry.bmi) : undefined
-        };
-        setEntries([...entries, entry]);
+        await addWeightEntry(entryData);
       }
       setNewEntry({
         weight: '',
@@ -143,8 +116,8 @@ export function WeightTracker() {
     }
   };
 
-  const removeEntry = (id: string) => {
-    setEntries(entries.filter(entry => entry.id !== id));
+  const removeEntry = async (id: string) => {
+    await deleteWeightEntry(id);
     if (editingId === id) {
       setEditingId(null);
       setNewEntry({
@@ -159,22 +132,24 @@ export function WeightTracker() {
     }
   };
 
-  const startEditing = (entry: WeightEntry) => {
-    setEditingId(entry.id);
-    setUnit(entry.unit);
-    setNewEntry({
-      weight: entry.weight.toString(),
-      time: entry.time,
-      bodyFat: entry.bodyFat?.toString() || '',
-      water: entry.water?.toString() || '',
-      muscleMass: entry.muscleMass?.toString() || '',
-      boneMass: entry.boneMass?.toString() || '',
-      bmi: entry.bmi?.toString() || ''
-    });
-    if (entry.bodyFat || entry.water || entry.muscleMass || entry.boneMass || entry.bmi) {
-      setShowAdvanced(true);
+  const startEditing = async (entry: WeightEntry) => {
+    if (entry.id) {
+      setEditingId(entry.id);
+      await setWeightUnit(entry.unit);
+      setNewEntry({
+        weight: entry.weight.toString(),
+        time: entry.time,
+        bodyFat: entry.bodyFat?.toString() || '',
+        water: entry.water?.toString() || '',
+        muscleMass: entry.muscleMass?.toString() || '',
+        boneMass: entry.boneMass?.toString() || '',
+        bmi: entry.bmi?.toString() || ''
+      });
+      if (entry.bodyFat || entry.water || entry.muscleMass || entry.boneMass || entry.bmi) {
+        setShowAdvanced(true);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditing = () => {
@@ -191,28 +166,28 @@ export function WeightTracker() {
     setShowAdvanced(false);
   };
 
-  const toggleUnit = () => {
-    const newUnit = unit === 'kg' ? 'lb' : 'kg';
-    setUnit(newUnit);
+  const toggleUnit = async () => {
+    const newUnit = weightUnit === 'kg' ? 'lb' : 'kg';
+    await setWeightUnit(newUnit);
   };
 
   // Get weight trend
   const getWeightTrend = (): { change: number; direction: 'up' | 'down' | 'stable' } | null => {
-    if (entries.length < 2) return null;
-    
-    const sortedEntries = [...entries].sort((a, b) => {
+    if (weightEntries.length < 2) return null;
+
+    const sortedEntries = [...weightEntries].sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
       return a.time.localeCompare(b.time);
     });
-    
+
     const latest = sortedEntries[sortedEntries.length - 1];
     const previous = sortedEntries[sortedEntries.length - 2];
-    
+
     // Convert to same unit for comparison
     let latestWeight = latest.weight;
     let previousWeight = previous.weight;
-    
+
     if (latest.unit !== previous.unit) {
       if (previous.unit === 'lb') {
         previousWeight = previousWeight * 0.453592; // Convert lb to kg
@@ -220,10 +195,10 @@ export function WeightTracker() {
         previousWeight = previousWeight / 0.453592; // Convert kg to lb
       }
     }
-    
+
     const change = latestWeight - previousWeight;
     const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'stable';
-    
+
     return { change: Math.abs(change), direction };
   };
 
@@ -410,7 +385,7 @@ export function WeightTracker() {
                 onClick={toggleUnit}
                 className="w-full h-10"
               >
-                {unit === 'kg' ? 'KG' : 'LB'}
+                {weightUnit === 'kg' ? 'KG' : 'LB'}
               </Button>
             </div>
           </div>
@@ -491,7 +466,7 @@ export function WeightTracker() {
                 </div>
 
                 <div>
-                  <Label htmlFor="boneMass">Bone Mass ({unit})</Label>
+                  <Label htmlFor="boneMass">Bone Mass ({weightUnit})</Label>
                   <Input
                     id="boneMass"
                     type="number"

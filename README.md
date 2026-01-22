@@ -1,25 +1,29 @@
-# Health Tracker Mobile App v2.0
+# Health Tracker Mobile App v3.0
 
 A comprehensive health tracking mobile application built with React, TypeScript, and Capacitor. Track your daily wellness journey, discover patterns between food intake and symptoms, and gain insights into your health.
 
 ## Features
 
-### Core Tracking (8 Categories)
-- **Food Logging**: Track meals with ingredients, portions, and notes. Edit any entry with full CRUD support
-- **Water Intake**: Monitor daily hydration levels with customizable amounts. Edit entries anytime
-- **Exercise Tracking**: Log workouts with duration and intensity. Modify past entries as needed
-- **Bowel Movements**: Track digestive health patterns with Bristol Stool Scale. Full edit capabilities
-- **Symptoms**: Record health symptoms with severity levels. Update or delete symptoms
-- **Medications**: Manage medication list and log doses with timestamps. NEW in v2.0
-- **Weight Tracking**: Monitor weight trends with body composition metrics (BMI, body fat, water %, muscle mass, bone mass). NEW in v2.0
+### Core Tracking (9 Categories)
+- **Food Logging**: Track meals with ingredients, portions, and notes. Recipe book for saving favorite meals. Full CRUD support
+- **Water Intake**: Monitor daily hydration with custom amounts and goal tracking. Manual entry with time selection
+- **Exercise Tracking**: Log workouts with duration and intensity. Separate step counter for daily steps
+- **Bowel Movements**: Track digestive health with Bristol Stool Scale (Types 1-8 including "Other"). Full edit capabilities
+- **Symptoms**: Record health symptoms with severity levels. Separate wellness feelings tracker (overall, morning, afternoon, evening moods)
+- **Medications**: Persistent medication list + daily dose logging. Medications persist day-to-day
+- **Weight Tracking**: Monitor weight with body composition metrics (BMI, body fat, water %, muscle mass, bone mass). 30-day trend visualization
+- **Sleep Tracking**: Comprehensive sleep monitoring with bed/wake times, quality ratings (1-5), mood tracking, and advanced metrics (snoring, dreams, interruptions, naps). NEW in v3.0
 - **Insights**: AI-powered correlation analysis and health pattern visualization
 
-### V2.0 Updates
-- **Edit Functionality**: All 7 tracking categories now support full CRUD operations (Create, Read, Update, Delete)
-- **Medication Tracker**: Maintain a medication list and log doses with customizable dosages and notes
-- **Weight Tracker**: Track weight with comprehensive body metrics, circular SVG visualizations, and trend indicators
-- **Unified CSV Export**: Single chronological CSV file containing all 8 categories for comprehensive health logs
-- **Enhanced UI**: Optimized horizontal icon menu with 8 tabs, improved padding, and better mobile experience
+### V3.0 Updates
+- **Sleep Tracker**: Complete sleep monitoring with quality ratings, mood tracking, duration calculation, and advanced metrics
+- **Recipe Book**: Save and manage favorite recipes independently from food entries
+- **Step Counter**: Separate daily step tracking alongside exercise entries
+- **Wellness Feelings**: Track overall and time-of-day wellness feelings separate from symptoms
+- **Bristol Type 8**: Added "Other" option for bowel entries that don't fit standard types
+- **Database v3**: Upgraded schema with recipes, stepEntries, wellnessFeelings, sleepEntries, medicationLogs tables
+- **Enhanced CSV Export**: Unified CSV now includes all 9 categories (Food, Water, Exercise, Steps, Bowel, Symptoms, Wellness, Medicine, Weight, Sleep)
+- **Optimized UI**: 9-tab horizontal icon menu with reduced icon size for better fit
 
 ### Advanced Analytics
 - **Pattern Recognition**: AI-powered correlation analysis between food intake and symptoms
@@ -29,13 +33,14 @@ A comprehensive health tracking mobile application built with React, TypeScript,
 
 ### Data Management
 - **Export Options**:
-  - Complete JSON backup (v2.0 format with medications and weight data)
-  - Unified CSV export (all categories chronologically sorted)
+  - Complete JSON backup (v3.0 format with all 9 categories including recipes, steps, wellness, sleep)
+  - Unified CSV export (all 9 categories chronologically sorted in single file)
   - PDF insights reports
-- **Import Functionality**: Restore data from JSON backups
+- **Import Functionality**: Restore data from JSON backups (backward compatible with v2.0)
 - **Offline-First**: All data stored locally using IndexedDB (Dexie.js)
 - **Native Sharing**: Android share dialog integration
-- **Database Versioning**: Automatic migration from v1 to v2 schema
+- **Database Versioning**: Automatic migration from v1 → v2 → v3 schema
+- **Dual-Table Systems**: Medications list persists day-to-day, separate from daily medication logs. Recipes persist independently from food entries
 
 ## Tech Stack
 

@@ -9,27 +9,21 @@ import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Pill, Check, Settings } from 'lucide-react';
-
-interface Medication {
-  id: string;
-  name: string;
-  dosage: string;
-  notes?: string;
-}
-
-interface MedicationLog {
-  id: string;
-  medicationId: string;
-  medicationName: string;
-  dosage: string;
-  time: string;
-  date: string; // YYYY-MM-DD format
-  notes?: string;
-}
+import { useHealthData } from '../contexts/HealthDataContext';
+import { Medication, MedicationLog } from '../lib/database';
 
 export function MedicationsTracker() {
-  const [medications, setMedications] = useState<Medication[]>([]);
-  const [logs, setLogs] = useState<MedicationLog[]>([]);
+  const {
+    medications,
+    medicationLogs,
+    addMedication,
+    updateMedication,
+    deleteMedication,
+    addMedicationLog,
+    updateMedicationLog,
+    deleteMedicationLog
+  } = useHealthData();
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMedId, setEditingMedId] = useState<string | null>(null);
@@ -88,7 +82,7 @@ export function MedicationsTracker() {
 
   const getLogsForDate = (date: Date): MedicationLog[] => {
     const dateStr = formatDate(date);
-    return logs
+    return medicationLogs
       .filter(log => log.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -116,28 +110,20 @@ export function MedicationsTracker() {
   };
 
   // Medication list management
-  const addMedication = () => {
+  const handleAddMedication = async () => {
     if (newMedication.name && newMedication.dosage) {
       if (editingMedId) {
-        setMedications(medications.map(med =>
-          med.id === editingMedId
-            ? { ...med, ...newMedication }
-            : med
-        ));
+        await updateMedication(editingMedId, newMedication);
         setEditingMedId(null);
       } else {
-        const medication: Medication = {
-          id: Date.now().toString(),
-          ...newMedication
-        };
-        setMedications([...medications, medication]);
+        await addMedication(newMedication);
       }
       setNewMedication({ name: '', dosage: '', notes: '' });
     }
   };
 
-  const removeMedication = (id: string) => {
-    setMedications(medications.filter(med => med.id !== id));
+  const handleRemoveMedication = async (id: string) => {
+    await deleteMedication(id);
     if (editingMedId === id) {
       setEditingMedId(null);
       setNewMedication({ name: '', dosage: '', notes: '' });
@@ -159,44 +145,37 @@ export function MedicationsTracker() {
   };
 
   // Medication log management
-  const addLog = () => {
+  const handleAddLog = async () => {
     if (newLog.medicationId && newLog.time) {
       const medication = medications.find(m => m.id === newLog.medicationId);
       if (!medication) return;
 
       if (editingId) {
-        setLogs(logs.map(log =>
-          log.id === editingId
-            ? {
-                ...log,
-                medicationId: newLog.medicationId,
-                medicationName: medication.name,
-                dosage: medication.dosage,
-                time: newLog.time,
-                notes: newLog.notes,
-                date: formatDate(selectedDate)
-              }
-            : log
-        ));
-        setEditingId(null);
-      } else {
-        const log: MedicationLog = {
-          id: Date.now().toString(),
+        await updateMedicationLog(editingId, {
           medicationId: newLog.medicationId,
           medicationName: medication.name,
           dosage: medication.dosage,
           time: newLog.time,
           notes: newLog.notes,
           date: formatDate(selectedDate)
-        };
-        setLogs([...logs, log]);
+        });
+        setEditingId(null);
+      } else {
+        await addMedicationLog({
+          medicationId: newLog.medicationId,
+          medicationName: medication.name,
+          dosage: medication.dosage,
+          time: newLog.time,
+          notes: newLog.notes,
+          date: formatDate(selectedDate)
+        });
       }
       setNewLog({ medicationId: '', time: '', notes: '' });
     }
   };
 
-  const removeLog = (id: string) => {
-    setLogs(logs.filter(log => log.id !== id));
+  const handleRemoveLog = async (id: string) => {
+    await deleteMedicationLog(id);
     if (editingId === id) {
       setEditingId(null);
       setNewLog({ medicationId: '', time: '', notes: '' });
@@ -219,31 +198,27 @@ export function MedicationsTracker() {
   };
 
   // Quick log for a medication
-  const quickLog = (medication: Medication) => {
-    const log: MedicationLog = {
-      id: Date.now().toString(),
-      medicationId: medication.id,
+  const handleQuickLog = async (medication: Medication) => {
+    await addMedicationLog({
+      medicationId: medication.id!,
       medicationName: medication.name,
       dosage: medication.dosage,
       time: getCurrentTime(),
       date: formatDate(selectedDate)
-    };
-    setLogs([...logs, log]);
+    });
   };
 
   // Add quick medication (one-time, not saved to list)
-  const addQuickMedication = () => {
+  const handleAddQuickMedication = async () => {
     if (quickMed.name && quickMed.dosage && quickMed.time) {
-      const log: MedicationLog = {
-        id: Date.now().toString(),
+      await addMedicationLog({
         medicationId: 'quick-' + Date.now(), // Temporary ID for non-list meds
         medicationName: quickMed.name,
         dosage: quickMed.dosage,
         time: quickMed.time,
         notes: quickMed.notes,
         date: formatDate(selectedDate)
-      };
-      setLogs([...logs, log]);
+      });
       setQuickMed({ name: '', dosage: '', time: '', notes: '' });
       setShowQuickAdd(false);
     }
@@ -255,7 +230,8 @@ export function MedicationsTracker() {
   };
 
   // Check if medication has been logged today
-  const isMedicationLoggedToday = (medicationId: string): boolean => {
+  const isMedicationLoggedToday = (medicationId: string | undefined): boolean => {
+    if (!medicationId) return false;
     return currentDateLogs.some(log => log.medicationId === medicationId);
   };
 
@@ -368,7 +344,7 @@ export function MedicationsTracker() {
             />
           </div>
 
-          <Button onClick={addQuickMedication} className="w-full">
+          <Button onClick={handleAddQuickMedication} className="w-full">
             Log Medication
           </Button>
         </CardContent>
@@ -424,7 +400,7 @@ export function MedicationsTracker() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={addMedication} className={editingMedId ? "flex-1" : "w-full"}>
+                <Button onClick={handleAddMedication} className={editingMedId ? "flex-1" : "w-full"}>
                   {editingMedId ? 'Update Medication' : 'Add Medication'}
                 </Button>
                 {editingMedId && (
@@ -467,7 +443,7 @@ export function MedicationsTracker() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeMedication(medication.id)}
+                            onClick={() => handleRemoveMedication(medication.id!)}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -507,7 +483,7 @@ export function MedicationsTracker() {
                 ) : (
                   <Button
                     size="sm"
-                    onClick={() => quickLog(medication)}
+                    onClick={() => handleQuickLog(medication)}
                   >
                     Log Now
                   </Button>
@@ -580,7 +556,7 @@ export function MedicationsTracker() {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={addLog} className={editingId ? "flex-1" : "w-full"}>
+              <Button onClick={handleAddLog} className={editingId ? "flex-1" : "w-full"}>
                 {editingId ? 'Update Log' : 'Add Log'}
               </Button>
               {editingId && (
@@ -645,7 +621,7 @@ export function MedicationsTracker() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeLog(log.id)}
+                      onClick={() => handleRemoveLog(log.id!)}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
