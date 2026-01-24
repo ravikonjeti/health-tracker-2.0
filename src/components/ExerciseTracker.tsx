@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { Plus, Trash2, Clock, Dumbbell, Heart, Zap, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Footprints } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { ExerciseEntry, StepEntry } from '../lib/database';
 
@@ -34,9 +34,13 @@ export function ExerciseTracker() {
     notes: '',
     time: ''
   });
+  const [stepCount, setStepCount] = useState('');
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDateDisplay = (date: Date): string => {
@@ -188,6 +192,33 @@ export function ExerciseTracker() {
 
   const totalMinutes = currentDateEntries.reduce((sum, entry) => sum + entry.duration, 0);
 
+  // Step tracking functions
+  const getStepEntryForDate = (date: Date): StepEntry | undefined => {
+    const dateStr = formatDate(date);
+    return stepEntries.find(entry => entry.date === dateStr);
+  };
+
+  const currentStepEntry = getStepEntryForDate(selectedDate);
+
+  const addOrUpdateSteps = async () => {
+    const steps = parseInt(stepCount);
+    if (steps > 0) {
+      const dateStr = formatDate(selectedDate);
+      if (currentStepEntry) {
+        await updateStepEntry(currentStepEntry.id!, { steps });
+      } else {
+        await addStepEntry({ date: dateStr, steps });
+      }
+      setStepCount('');
+    }
+  };
+
+  const removeSteps = async () => {
+    if (currentStepEntry && window.confirm('Are you sure you want to delete the step count for this date?')) {
+      await deleteStepEntry(currentStepEntry.id!);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Date Navigation */}
@@ -232,6 +263,88 @@ export function ExerciseTracker() {
             </Button>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Step Counter */}
+      <Card className="border-2 border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Footprints className="h-5 w-5" />
+            Daily Steps
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {currentStepEntry ? (
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {currentStepEntry.steps.toLocaleString()}
+              </div>
+              <div className="text-sm text-blue-700 mb-3">steps for {getDateDisplay(selectedDate).toLowerCase()}</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStepCount(currentStepEntry.steps.toString())}
+                  className="flex-1"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={removeSteps}
+                  className="flex-1 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="step-count">Log your steps</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="step-count"
+                  type="number"
+                  value={stepCount}
+                  onChange={(e) => setStepCount(e.target.value)}
+                  placeholder="e.g., 8000"
+                  min="0"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={addOrUpdateSteps}
+                  disabled={!stepCount || parseInt(stepCount) <= 0}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
+                </Button>
+              </div>
+            </div>
+          )}
+          {stepCount && !currentStepEntry && parseInt(stepCount) > 0 && (
+            <div className="text-center">
+              <Button
+                onClick={addOrUpdateSteps}
+                className="w-full"
+              >
+                Save {parseInt(stepCount).toLocaleString()} steps
+              </Button>
+            </div>
+          )}
+          {stepCount && currentStepEntry && (
+            <div className="text-center">
+              <Button
+                onClick={addOrUpdateSteps}
+                className="w-full"
+              >
+                Update to {parseInt(stepCount).toLocaleString()} steps
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <Card>

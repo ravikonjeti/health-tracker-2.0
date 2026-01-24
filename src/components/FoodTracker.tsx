@@ -8,12 +8,12 @@ import { Textarea } from './ui/textarea';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils, Pencil } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils, Pencil, BookOpen, ChefHat } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
-import { FoodEntry } from '../lib/database';
+import { FoodEntry, Recipe, RecipeIngredient } from '../lib/database';
 
 export function FoodTracker() {
-  const { foodEntries, addFoodEntry, updateFoodEntry, deleteFoodEntry } = useHealthData();
+  const { foodEntries, addFoodEntry, updateFoodEntry, deleteFoodEntry, recipes, addRecipe, deleteRecipe, updateRecipe } = useHealthData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({
@@ -25,6 +25,15 @@ export function FoodTracker() {
     notes: ''
   });
   const [newIngredient, setNewIngredient] = useState('');
+  const [showRecipeBook, setShowRecipeBook] = useState(false);
+  const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
+  const [newRecipe, setNewRecipe] = useState({
+    name: '',
+    ingredients: [] as RecipeIngredient[],
+    notes: ''
+  });
+  const [newRecipeIngredient, setNewRecipeIngredient] = useState({ name: '', quantity: '' });
+  const [editDate, setEditDate] = useState<Date | null>(null);
 
   const getTimeBasedColor = (type: string, time: string): string => {
     if (type === 'breakfast') {
@@ -79,12 +88,13 @@ export function FoodTracker() {
   const addEntry = async () => {
     if (newEntry.description && newEntry.time) {
       if (editingId) {
-        // Update existing entry
+        // Update existing entry - use editDate if set, otherwise selectedDate
         await updateFoodEntry(editingId, {
           ...newEntry,
-          date: formatDate(selectedDate)
+          date: formatDate(editDate || selectedDate)
         });
         setEditingId(null);
+        setEditDate(null);
       } else {
         // Add new entry
         await addFoodEntry({
@@ -129,12 +139,15 @@ export function FoodTracker() {
       ingredients: entry.ingredients,
       notes: entry.notes || ''
     });
+    // Set the edit date from the entry
+    setEditDate(new Date(entry.date + 'T00:00:00'));
     // Scroll to top to show the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditing = () => {
     setEditingId(null);
+    setEditDate(null);
     setNewEntry({
       type: 'breakfast',
       description: '',
@@ -152,7 +165,10 @@ export function FoodTracker() {
   };
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDateDisplay = (date: Date): string => {
@@ -213,6 +229,74 @@ export function FoodTracker() {
   };
 
   const stats = getMealStats();
+
+  // Recipe management functions
+  const addRecipeIngredient = () => {
+    if (newRecipeIngredient.name.trim() && newRecipeIngredient.quantity.trim()) {
+      setNewRecipe({
+        ...newRecipe,
+        ingredients: [...newRecipe.ingredients, { ...newRecipeIngredient }]
+      });
+      setNewRecipeIngredient({ name: '', quantity: '' });
+    }
+  };
+
+  const removeRecipeIngredient = (index: number) => {
+    setNewRecipe({
+      ...newRecipe,
+      ingredients: newRecipe.ingredients.filter((_, i) => i !== index)
+    });
+  };
+
+  const saveRecipe = async () => {
+    if (newRecipe.name && newRecipe.ingredients.length > 0) {
+      if (editingRecipeId) {
+        await updateRecipe(editingRecipeId, newRecipe);
+        setEditingRecipeId(null);
+      } else {
+        await addRecipe(newRecipe);
+      }
+      setNewRecipe({ name: '', ingredients: [], notes: '' });
+      setNewRecipeIngredient({ name: '', quantity: '' });
+    }
+  };
+
+  const removeRecipe = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this recipe?')) {
+      await deleteRecipe(id);
+      if (editingRecipeId === id) {
+        setEditingRecipeId(null);
+        setNewRecipe({ name: '', ingredients: [], notes: '' });
+      }
+    }
+  };
+
+  const startEditingRecipe = (recipe: Recipe) => {
+    setEditingRecipeId(recipe.id || null);
+    setNewRecipe({
+      name: recipe.name,
+      ingredients: recipe.ingredients,
+      notes: recipe.notes || ''
+    });
+    setShowRecipeBook(true);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
+
+  const cancelEditingRecipe = () => {
+    setEditingRecipeId(null);
+    setNewRecipe({ name: '', ingredients: [], notes: '' });
+    setNewRecipeIngredient({ name: '', quantity: '' });
+  };
+
+  const useRecipeForFood = (recipe: Recipe) => {
+    setNewEntry({
+      ...newEntry,
+      description: recipe.name,
+      ingredients: recipe.ingredients.map(ing => ing.name)
+    });
+    setShowRecipeBook(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="space-y-4">
@@ -311,6 +395,28 @@ export function FoodTracker() {
               </SelectContent>
             </Select>
           </div>
+
+          {editingId && editDate && (
+            <div>
+              <Label htmlFor="edit-date">Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {getDateDisplay(editDate)}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editDate}
+                    onSelect={(date) => date && setEditDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="description">What did you eat?</Label>
@@ -518,6 +624,197 @@ export function FoodTracker() {
           Go to Today
         </Button>
       )}
+
+      {/* Recipe Book Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Recipe Book
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRecipeBook(!showRecipeBook)}
+            >
+              {showRecipeBook ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showRecipeBook && (
+          <CardContent className="space-y-4">
+            {/* Add/Edit Recipe Form */}
+            <Card className="border-2 border-dashed">
+              <CardContent className="pt-4 space-y-4">
+                <div>
+                  <Label htmlFor="recipe-name">Recipe Name</Label>
+                  <Input
+                    id="recipe-name"
+                    value={newRecipe.name}
+                    onChange={(e) => setNewRecipe({ ...newRecipe, name: e.target.value })}
+                    placeholder="e.g., My favorite smoothie"
+                  />
+                </div>
+
+                <div>
+                  <Label>Ingredients</Label>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        value={newRecipeIngredient.name}
+                        onChange={(e) => setNewRecipeIngredient({ ...newRecipeIngredient, name: e.target.value })}
+                        placeholder="Ingredient name"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            document.getElementById('ingredient-quantity')?.focus();
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="ingredient-quantity"
+                          value={newRecipeIngredient.quantity}
+                          onChange={(e) => setNewRecipeIngredient({ ...newRecipeIngredient, quantity: e.target.value })}
+                          placeholder="Quantity"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addRecipeIngredient();
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addRecipeIngredient}
+                          disabled={!newRecipeIngredient.name.trim() || !newRecipeIngredient.quantity.trim()}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {newRecipe.ingredients.length > 0 && (
+                      <div className="space-y-1">
+                        {newRecipe.ingredients.map((ingredient, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <span className="text-sm">
+                              <span className="font-medium">{ingredient.name}</span> - {ingredient.quantity}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeRecipeIngredient(index)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="recipe-notes">Notes (optional)</Label>
+                  <Textarea
+                    id="recipe-notes"
+                    value={newRecipe.notes}
+                    onChange={(e) => setNewRecipe({ ...newRecipe, notes: e.target.value })}
+                    placeholder="Cooking instructions or additional notes..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={saveRecipe} className={editingRecipeId ? "flex-1" : "w-full"} disabled={!newRecipe.name || newRecipe.ingredients.length === 0}>
+                    <ChefHat className="h-4 w-4 mr-2" />
+                    {editingRecipeId ? 'Update Recipe' : 'Save Recipe'}
+                  </Button>
+                  {editingRecipeId && (
+                    <Button
+                      variant="outline"
+                      onClick={cancelEditingRecipe}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Saved Recipes List */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Saved Recipes ({recipes.length})</h4>
+              {recipes.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                    No recipes saved yet. Create your first recipe above!
+                  </CardContent>
+                </Card>
+              ) : (
+                recipes.map((recipe) => (
+                  <Card key={recipe.id}>
+                    <CardContent className="pt-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-semibold mb-2 flex items-center gap-2">
+                            <ChefHat className="h-4 w-4" />
+                            {recipe.name}
+                          </h4>
+                          <div className="space-y-1 mb-2">
+                            {recipe.ingredients.map((ingredient, index) => (
+                              <div key={index} className="text-sm text-muted-foreground">
+                                • {ingredient.name} - {ingredient.quantity}
+                              </div>
+                            ))}
+                          </div>
+                          {recipe.notes && (
+                            <p className="text-sm text-muted-foreground italic">
+                              {recipe.notes}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => useRecipeForFood(recipe)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            title="Use this recipe for a food entry"
+                          >
+                            <Utensils className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditingRecipe(recipe)}
+                            className="text-primary hover:text-primary"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeRecipe(recipe.id!)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 }

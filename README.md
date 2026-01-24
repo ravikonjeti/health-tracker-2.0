@@ -5,14 +5,14 @@ A comprehensive health tracking mobile application built with React, TypeScript,
 ## Features
 
 ### Core Tracking (9 Categories)
-- **Food Logging**: Track meals with ingredients, portions, and notes. Recipe book for saving favorite meals. Full CRUD support
-- **Water Intake**: Monitor daily hydration with custom amounts and goal tracking. Manual entry with time selection
-- **Exercise Tracking**: Log workouts with duration and intensity. Separate step counter for daily steps
+- **Food Logging**: Track meals with ingredients, portions, and notes. Recipe book for saving favorite meals. Full CRUD support with date editing
+- **Water Intake**: Monitor daily hydration with custom amounts and goal tracking. Manual entry with time selection. Full edit capabilities
+- **Exercise Tracking**: Log workouts with duration and intensity. Separate step counter for daily steps. Full CRUD support
 - **Bowel Movements**: Track digestive health with Bristol Stool Scale (Types 1-8 including "Other"). Full edit capabilities
-- **Symptoms**: Record health symptoms with severity levels. Separate wellness feelings tracker (overall, morning, afternoon, evening moods)
-- **Medications**: Persistent medication list + daily dose logging. Medications persist day-to-day
+- **Symptoms**: Record health symptoms with severity levels. Separate wellness feelings tracker (overall, morning, afternoon, evening moods). Full CRUD support
+- **Medications**: Persistent medication list + daily dose logging. Medications persist day-to-day. Full CRUD with intelligent edit routing
 - **Weight Tracking**: Monitor weight with body composition metrics (BMI, body fat, water %, muscle mass, bone mass). 30-day trend visualization
-- **Sleep Tracking**: Comprehensive sleep monitoring with bed/wake times, quality ratings (1-5), mood tracking, and advanced metrics (snoring, dreams, interruptions, naps). NEW in v3.0
+- **Sleep Tracking**: Comprehensive sleep monitoring with bed/wake times, quality ratings (1-5), mood tracking, and advanced metrics (snoring, dreams, interruptions, naps)
 - **Insights**: AI-powered correlation analysis and health pattern visualization
 
 ### V3.0 Updates
@@ -24,6 +24,12 @@ A comprehensive health tracking mobile application built with React, TypeScript,
 - **Database v3**: Upgraded schema with recipes, stepEntries, wellnessFeelings, sleepEntries, medicationLogs tables
 - **Enhanced CSV Export**: Unified CSV now includes all 9 categories (Food, Water, Exercise, Steps, Bowel, Symptoms, Wellness, Medicine, Weight, Sleep)
 - **Optimized UI**: 9-tab horizontal icon menu with reduced icon size for better fit
+
+### Recent Improvements (v3.1)
+- **Timezone Fix**: All date tracking now uses device timezone instead of UTC, eliminating date shifts after certain times
+- **Food Entry Date Editing**: Edit food entries and change their date using calendar picker
+- **Medication Edit Enhancement**: Intelligent edit routing automatically detects quick-add vs list medications and scrolls to correct form
+- **Full CRUD Support**: All trackers now support complete Create, Read, Update, Delete operations with proper edit workflows
 
 ### Advanced Analytics
 - **Pattern Recognition**: AI-powered correlation analysis between food intake and symptoms

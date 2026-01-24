@@ -27,6 +27,7 @@ export function MedicationsTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMedId, setEditingMedId] = useState<string | null>(null);
+  const [editingQuickLogId, setEditingQuickLogId] = useState<string | null>(null);
   
   // For adding/editing medications in the list
   const [newMedication, setNewMedication] = useState({
@@ -54,7 +55,10 @@ export function MedicationsTracker() {
   });
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDateDisplay = (date: Date): string => {
@@ -180,16 +184,39 @@ export function MedicationsTracker() {
       setEditingId(null);
       setNewLog({ medicationId: '', time: '', notes: '' });
     }
+    if (editingQuickLogId === id) {
+      setEditingQuickLogId(null);
+      setQuickMed({ name: '', dosage: '', time: '', notes: '' });
+    }
   };
 
   const startEditingLog = (log: MedicationLog) => {
-    setEditingId(log.id);
-    setNewLog({
-      medicationId: log.medicationId,
-      time: log.time,
-      notes: log.notes || ''
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Check if this log was created via quick-add (not in medication list)
+    const isQuickAddLog = !medications.find(m => m.id === log.medicationId);
+
+    if (isQuickAddLog) {
+      // Edit in quick-add form (at top)
+      setEditingQuickLogId(log.id || null);
+      setQuickMed({
+        name: log.medicationName,
+        dosage: log.dosage,
+        time: log.time,
+        notes: log.notes || ''
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Edit in manual log form (further down page)
+      setEditingId(log.id || null);
+      setNewLog({
+        medicationId: log.medicationId,
+        time: log.time,
+        notes: log.notes || ''
+      });
+      // Scroll to the manual log form
+      setTimeout(() => {
+        document.getElementById('manual-log-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
   };
 
   const cancelEditingLog = () => {
@@ -211,14 +238,28 @@ export function MedicationsTracker() {
   // Add quick medication (one-time, not saved to list)
   const handleAddQuickMedication = async () => {
     if (quickMed.name && quickMed.dosage && quickMed.time) {
-      await addMedicationLog({
-        medicationId: 'quick-' + Date.now(), // Temporary ID for non-list meds
-        medicationName: quickMed.name,
-        dosage: quickMed.dosage,
-        time: quickMed.time,
-        notes: quickMed.notes,
-        date: formatDate(selectedDate)
-      });
+      if (editingQuickLogId) {
+        // Update existing quick-add log
+        await updateMedicationLog(editingQuickLogId, {
+          medicationId: 'quick-' + Date.now(), // Keep it as a quick-add med
+          medicationName: quickMed.name,
+          dosage: quickMed.dosage,
+          time: quickMed.time,
+          notes: quickMed.notes,
+          date: formatDate(selectedDate)
+        });
+        setEditingQuickLogId(null);
+      } else {
+        // Add new quick-add log
+        await addMedicationLog({
+          medicationId: 'quick-' + Date.now(), // Temporary ID for non-list meds
+          medicationName: quickMed.name,
+          dosage: quickMed.dosage,
+          time: quickMed.time,
+          notes: quickMed.notes,
+          date: formatDate(selectedDate)
+        });
+      }
       setQuickMed({ name: '', dosage: '', time: '', notes: '' });
       setShowQuickAdd(false);
     }
@@ -226,6 +267,7 @@ export function MedicationsTracker() {
 
   const cancelQuickAdd = () => {
     setShowQuickAdd(false);
+    setEditingQuickLogId(null);
     setQuickMed({ name: '', dosage: '', time: '', notes: '' });
   };
 
@@ -285,8 +327,8 @@ export function MedicationsTracker() {
       <Card className="border-2 border-primary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Log What I Took Today
+            {editingQuickLogId ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+            {editingQuickLogId ? 'Edit Medication Log' : 'Log What I Took Today'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -344,9 +386,20 @@ export function MedicationsTracker() {
             />
           </div>
 
-          <Button onClick={handleAddQuickMedication} className="w-full">
-            Log Medication
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleAddQuickMedication} className={editingQuickLogId ? "flex-1" : "w-full"}>
+              {editingQuickLogId ? 'Update Medication' : 'Log Medication'}
+            </Button>
+            {editingQuickLogId && (
+              <Button
+                variant="outline"
+                onClick={cancelQuickAdd}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -496,11 +549,11 @@ export function MedicationsTracker() {
 
       {/* Manual Log Entry Form */}
       {medications.length > 0 && (
-        <Card>
+        <Card id="manual-log-form">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              {editingId ? 'Edit Log' : 'Manual Log Entry'}
+              {editingId ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+              {editingId ? 'Edit Medication Log' : 'Manual Log Entry'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">

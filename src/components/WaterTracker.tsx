@@ -18,6 +18,9 @@ export function WaterTracker() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editTime, setEditTime] = useState('');
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualAmount, setManualAmount] = useState('');
+  const [manualTime, setManualTime] = useState('');
   
   // Conversion functions
   const mlToOz = (ml: number) => Math.round((ml / 29.5735) * 10) / 10;
@@ -35,7 +38,10 @@ export function WaterTracker() {
   };
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDateDisplay = (date: Date): string => {
@@ -121,6 +127,25 @@ export function WaterTracker() {
     setEditingId(null);
     setEditAmount('');
     setEditTime('');
+  };
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+  };
+
+  const addManualEntry = () => {
+    if (manualAmount && manualTime) {
+      const amountInMl = isMetric ? parseInt(manualAmount) : ozToMl(parseFloat(manualAmount));
+      addWaterEntry({
+        amount: amountInMl,
+        time: manualTime,
+        date: formatDate(selectedDate)
+      });
+      setManualAmount('');
+      setManualTime('');
+      setShowManualEntry(false);
+    }
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -266,6 +291,58 @@ export function WaterTracker() {
               <Target className="h-4 w-4" />
               Goal: {formatGoal(waterGoal === 2000 ? 2500 : 2000)}
             </Button>
+          </div>
+
+          {/* Manual Entry Section */}
+          <div className="pt-2 border-t">
+            <Button
+              variant="ghost"
+              onClick={() => setShowManualEntry(!showManualEntry)}
+              className="w-full"
+            >
+              {showManualEntry ? 'Hide' : 'Show'} Manual Entry
+            </Button>
+            {showManualEntry && (
+              <div className="space-y-3 mt-3">
+                <div>
+                  <Label htmlFor="manual-amount">Amount ({isMetric ? 'ml' : 'oz'})</Label>
+                  <Input
+                    id="manual-amount"
+                    type="number"
+                    value={manualAmount}
+                    onChange={(e) => setManualAmount(e.target.value)}
+                    placeholder={isMetric ? "e.g., 350" : "e.g., 12"}
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="manual-time">Time</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="manual-time"
+                      type="time"
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => setManualTime(getCurrentTime())}
+                    >
+                      Now
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  onClick={addManualEntry}
+                  className="w-full"
+                  disabled={!manualAmount || !manualTime}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Entry
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
