@@ -1,4 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { Dialog, DialogContent, DialogTrigger } from './components/ui/dialog';
+import { Button } from './components/ui/button';
 import { FoodTracker } from './components/FoodTracker';
 import { WaterTracker } from './components/WaterTracker';
 import { ExerciseTracker } from './components/ExerciseTracker';
@@ -8,10 +10,9 @@ import { MedicationsTracker } from './components/MedicationsTracker';
 import { WeightTracker } from './components/WeightTracker';
 import { SleepTracker } from './components/SleepTracker';
 import { InsightsTracker } from './components/InsightsTracker';
-import { ExportModal } from './components/ExportModal';
-import { ImportModal } from './components/ImportModal';
+import { ProfilePage } from './components/ProfilePage';
 import { InstallPrompt } from './components/InstallPrompt';
-import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, Pill, Scale, Moon, TrendingUp } from 'lucide-react';
+import { Utensils, Droplets, Dumbbell, Heart, Stethoscope, Pill, Scale, Moon, TrendingUp, User } from 'lucide-react';
 
 export default function App() {
   return (
@@ -20,10 +21,16 @@ export default function App() {
         <div className="mb-4 max-w-full">
           <div className="flex items-center justify-between mb-2 gap-2">
             <h1 className="text-xl font-bold text-primary flex-shrink">Health Tracker</h1>
-            <div className="flex gap-1 flex-shrink-0">
-              <ExportModal />
-              <ImportModal />
-            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="flex-shrink-0">
+                  <User className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <ProfilePage />
+              </DialogContent>
+            </Dialog>
           </div>
           <p className="text-center text-muted-foreground text-xs mb-3">
             Track your daily wellness journey
