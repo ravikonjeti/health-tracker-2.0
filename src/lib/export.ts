@@ -104,6 +104,7 @@ export async function exportSymptomsAsCSV(): Promise<void> {
 export async function exportUnifiedCSV(): Promise<void> {
   // Fetch all entries
   const foodEntries = await db.foodEntries.toArray();
+  const recipes = await db.recipes.toArray();
   const waterEntries = await db.waterEntries.toArray();
   const exerciseEntries = await db.exerciseEntries.toArray();
   const stepEntries = await db.stepEntries.toArray();
@@ -121,6 +122,13 @@ export async function exportUnifiedCSV(): Promise<void> {
   foodEntries.forEach(e => {
     const details = `${e.type} | ${e.description}${e.portion ? ` | ${e.portion}` : ''}${e.ingredients.length > 0 ? ` | Ingredients: ${e.ingredients.join(', ')}` : ''}${e.notes ? ` | ${e.notes}` : ''}`;
     allRows.push([e.date, e.time, 'Food', details]);
+  });
+
+  // Recipes
+  recipes.forEach(r => {
+    const ingredients = r.ingredients.map(i => `${i.name} (${i.amount})`).join(', ');
+    const details = `${r.name}${r.category ? ` | Category: ${r.category}` : ''} | Ingredients: ${ingredients}${r.instructions ? ` | Instructions: ${r.instructions}` : ''}${r.notes ? ` | Notes: ${r.notes}` : ''}`;
+    allRows.push([r.createdAt || '', '', 'Recipe', details]);
   });
 
   // Water entries
