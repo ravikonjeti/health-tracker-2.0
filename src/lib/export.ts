@@ -126,9 +126,9 @@ export async function exportUnifiedCSV(): Promise<void> {
 
   // Recipes
   recipes.forEach(r => {
-    const ingredients = r.ingredients.map(i => `${i.name} (${i.amount})`).join(', ');
-    const details = `${r.name}${r.category ? ` | Category: ${r.category}` : ''} | Ingredients: ${ingredients}${r.instructions ? ` | Instructions: ${r.instructions}` : ''}${r.notes ? ` | Notes: ${r.notes}` : ''}`;
-    allRows.push([r.createdAt || '', '', 'Recipe', details]);
+    const ingredients = r.ingredients.map(i => `${i.name} (${i.quantity})`).join(', ');
+    const details = `${r.name} | Ingredients: ${ingredients}${r.notes ? ` | Notes: ${r.notes}` : ''}`;
+    allRows.push(['', '', 'Recipe', details]);
   });
 
   // Water entries

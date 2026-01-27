@@ -8,9 +8,11 @@ import { Textarea } from './ui/textarea';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils, Pencil, BookOpen, ChefHat } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Utensils, Pencil, BookOpen, ChefHat, ScanBarcode, Copy } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { FoodEntry, Recipe, RecipeIngredient } from '../lib/database';
+import { BarcodeScanner } from './BarcodeScanner';
 
 export function FoodTracker() {
   const { foodEntries, addFoodEntry, updateFoodEntry, deleteFoodEntry, recipes, addRecipe, deleteRecipe, updateRecipe } = useHealthData();
@@ -34,6 +36,9 @@ export function FoodTracker() {
   });
   const [newRecipeIngredient, setNewRecipeIngredient] = useState({ name: '', quantity: '' });
   const [editDate, setEditDate] = useState<Date | null>(null);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [copySearchQuery, setCopySearchQuery] = useState('');
 
   const getTimeBasedColor = (type: string, time: string): string => {
     if (type === 'breakfast') {
@@ -82,6 +87,33 @@ export function FoodTracker() {
     setNewEntry({
       ...newEntry,
       ingredients: newEntry.ingredients.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleBarcodeScanSuccess = (productInfo: any) => {
+    // Build description
+    const description = productInfo.brand
+      ? `${productInfo.brand} - ${productInfo.name}`
+      : productInfo.name;
+
+    // Build nutrition notes
+    let notes = '';
+    if (productInfo.nutrition) {
+      const parts = [];
+      if (productInfo.nutrition.calories) parts.push(`Calories: ${productInfo.nutrition.calories}kcal`);
+      if (productInfo.nutrition.protein) parts.push(`Protein: ${productInfo.nutrition.protein}g`);
+      if (productInfo.nutrition.carbs) parts.push(`Carbs: ${productInfo.nutrition.carbs}g`);
+      if (productInfo.nutrition.fat) parts.push(`Fat: ${productInfo.nutrition.fat}g`);
+      notes = parts.join(', ');
+    }
+
+    // Auto-populate form
+    setNewEntry({
+      ...newEntry,
+      description,
+      portion: productInfo.portion || '',
+      ingredients: productInfo.ingredients || [],
+      notes
     });
   };
 
@@ -159,9 +191,60 @@ export function FoodTracker() {
     setNewIngredient('');
   };
 
+  const copyEntry = (entry: FoodEntry) => {
+    setNewEntry({
+      type: entry.type,
+      description: entry.description,
+      time: getCurrentTime(), // Use current time instead of original
+      portion: entry.portion || '',
+      ingredients: [...entry.ingredients], // Create a copy of the array
+      notes: entry.notes || ''
+    });
+    setShowCopyDialog(false);
+    // Scroll to top to show the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const getCurrentTime = () => {
     const now = new Date();
     return now.toTimeString().slice(0, 5);
+  };
+
+  const getMealTypeFromTime = (time: string): 'breakfast' | 'lunch' | 'dinner' | 'snack' => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+
+    // 6 AM - 12 PM: Breakfast (360 - 720 minutes)
+    if (totalMinutes >= 360 && totalMinutes < 720) {
+      return 'breakfast';
+    }
+    // 12 PM - 3 PM: Lunch (720 - 900 minutes)
+    else if (totalMinutes >= 720 && totalMinutes < 900) {
+      return 'lunch';
+    }
+    // 3 PM - 6 PM: Snack (900 - 1080 minutes)
+    else if (totalMinutes >= 900 && totalMinutes < 1080) {
+      return 'snack';
+    }
+    // 6 PM - 10 PM: Dinner (1080 - 1320 minutes)
+    else if (totalMinutes >= 1080 && totalMinutes < 1320) {
+      return 'dinner';
+    }
+    // 10 PM - 6 AM: Default to snack
+    else {
+      return 'snack';
+    }
+  };
+
+  const handleTimeChange = (time: string) => {
+    const mealType = getMealTypeFromTime(time);
+    setNewEntry({ ...newEntry, time, type: mealType });
+  };
+
+  const handleNowClick = () => {
+    const currentTime = getCurrentTime();
+    const mealType = getMealTypeFromTime(currentTime);
+    setNewEntry({ ...newEntry, time: currentTime, type: mealType });
   };
 
   const formatDate = (date: Date): string => {
@@ -375,9 +458,33 @@ export function FoodTracker() {
       {/* Add New Entry Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Utensils className="h-5 w-5" style={{ color: '#CD7F32' }} />
-            Food Entry
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Utensils className="h-5 w-5" style={{ color: '#CD7F32' }} />
+              Food Entry
+            </div>
+            {!editingId && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowCopyDialog(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </Button>
+                <Button
+                  onClick={() => setShowBarcodeScanner(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <ScanBarcode className="h-4 w-4" />
+                  Scan
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -435,14 +542,14 @@ export function FoodTracker() {
                 id="time"
                 type="time"
                 value={newEntry.time}
-                onChange={(e) => setNewEntry({ ...newEntry, time: e.target.value })}
+                onChange={(e) => handleTimeChange(e.target.value)}
                 className="flex-1 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
               />
               <Button
                 type="button"
                 variant="default"
                 size="default"
-                onClick={() => setNewEntry({ ...newEntry, time: getCurrentTime() })}
+                onClick={handleNowClick}
                 className="px-4 py-2 shrink-0"
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -815,6 +922,115 @@ export function FoodTracker() {
           </CardContent>
         )}
       </Card>
+
+      {/* Copy from Previous Dialog */}
+      <Dialog
+        open={showCopyDialog}
+        onOpenChange={(open) => {
+          setShowCopyDialog(open);
+          if (!open) setCopySearchQuery(''); // Reset search when closing
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle>Copy from Previous Entries</DialogTitle>
+          </DialogHeader>
+
+          {/* Search Input - Fixed at top */}
+          <div className="px-6 pb-4">
+            <Input
+              placeholder="Search by name, ingredients, or notes..."
+              value={copySearchQuery}
+              onChange={(e) => setCopySearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Scrollable Results */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
+            {(() => {
+              const filteredEntries = foodEntries
+                .filter((entry) => {
+                  if (!copySearchQuery) return true;
+                  const query = copySearchQuery.toLowerCase();
+                  return (
+                    entry.description.toLowerCase().includes(query) ||
+                    entry.ingredients.some(ing => ing.toLowerCase().includes(query)) ||
+                    entry.notes?.toLowerCase().includes(query) ||
+                    entry.portion?.toLowerCase().includes(query)
+                  );
+                })
+                .sort((a, b) => {
+                  const dateCompare = b.date.localeCompare(a.date);
+                  if (dateCompare !== 0) return dateCompare;
+                  return b.time.localeCompare(a.time);
+                });
+
+              if (filteredEntries.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {copySearchQuery
+                      ? 'No entries match your search'
+                      : 'No previous entries to copy from'}
+                  </div>
+                );
+              }
+
+              return filteredEntries.map((entry) => (
+                <Card
+                  key={entry.id}
+                  className="cursor-pointer hover:bg-accent transition-colors"
+                  onClick={() => copyEntry(entry)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getTimeBasedColor(entry.type, entry.time)}>
+                            {entry.type}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {getDateDisplay(new Date(entry.date + 'T00:00:00'))} at {entry.time}
+                          </span>
+                        </div>
+                        <h4 className="font-medium mb-1">{entry.description}</h4>
+                        {entry.portion && (
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Portion: {entry.portion}
+                          </p>
+                        )}
+                        {entry.ingredients.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {entry.ingredients.map((ing, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {ing}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {entry.notes && (
+                          <p className="text-sm text-muted-foreground italic">
+                            {entry.notes}
+                          </p>
+                        )}
+                      </div>
+                      <Copy className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ));
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barcode Scanner Modal */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onScanSuccess={handleBarcodeScanSuccess}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </div>
   );
 }

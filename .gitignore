@@ -56,3 +56,5 @@ android/capacitor-cordova-android-plugins/
 
 # System
 Thumbs.db
+releases/
+test-data-import.json
