@@ -8,9 +8,11 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Plus, Trash2, Clock, AlertTriangle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Smile, Meh, Frown, CloudRain } from 'lucide-react';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { SymptomEntry, WellnessFeelings } from '../lib/database';
+import { KnownAllergiesTracker } from './KnownAllergiesTracker';
 
 const commonSymptoms = [
   'Headache',
@@ -256,9 +258,15 @@ export function SymptomsTracker() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Date Navigation */}
-      <Card>
+    <Tabs defaultValue="symptoms" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="symptoms">Symptoms Log</TabsTrigger>
+        <TabsTrigger value="allergies">Known Allergies</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="symptoms" className="space-y-4">
+        {/* Date Navigation */}
+        <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <Button
@@ -654,6 +662,11 @@ export function SymptomsTracker() {
           Go to Today
         </Button>
       )}
-    </div>
+      </TabsContent>
+
+      <TabsContent value="allergies">
+        <KnownAllergiesTracker />
+      </TabsContent>
+    </Tabs>
   );
 }

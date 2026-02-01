@@ -126,6 +126,17 @@ export interface SleepEntry {
   napDuration?: number; // minutes
 }
 
+// Known allergies (persistent list)
+export interface KnownAllergy {
+  id?: string;
+  name: string; // e.g., "peanuts", "shellfish", "dairy"
+  severity: 'mild' | 'moderate' | 'severe' | 'anaphylaxis';
+  symptoms: string[]; // Common symptoms experienced
+  notes?: string;
+  diagnosedDate?: string; // When it was diagnosed
+  lastReaction?: string; // Date of last reaction
+}
+
 export interface UserSettings {
   id?: string;
   dailyWaterGoal: number; // ml
@@ -150,6 +161,7 @@ export class HealthDatabase extends Dexie {
   wellnessFeelings!: Table<WellnessFeelings, string>;
   medications!: Table<Medication, string>; // PERSISTENT medication list
   medicationLogs!: Table<MedicationLog, string>; // Daily medication logs
+  knownAllergies!: Table<KnownAllergy, string>; // PERSISTENT allergy list
 
   settings!: Table<UserSettings, string>;
 
@@ -200,6 +212,24 @@ export class HealthDatabase extends Dexie {
           return tx.table('medicationLogs').bulkAdd(entries);
         }
       });
+    });
+
+    // Version 4: Add known allergies
+    this.version(4).stores({
+      foodEntries: '++id, date, time, type, *ingredients',
+      waterEntries: '++id, date, time',
+      exerciseEntries: '++id, date, time, type',
+      bowelEntries: '++id, date, time',
+      symptomEntries: '++id, date, time, symptom',
+      medications: '++id, name',
+      medicationLogs: '++id, date, time, medicationId',
+      weightEntries: '++id, date, time',
+      sleepEntries: '++id, date',
+      recipes: '++id, name',
+      stepEntries: '++id, date',
+      wellnessFeelings: '++id, date',
+      knownAllergies: '++id, name',
+      settings: '++id'
     });
   }
 }

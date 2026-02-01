@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, Medication, MedicationLog, WeightEntry, Recipe, StepEntry, WellnessFeelings, SleepEntry, initializeDatabase } from '../lib/database';
+import { db, FoodEntry, WaterEntry, ExerciseEntry, BowelEntry, SymptomEntry, Medication, MedicationLog, WeightEntry, Recipe, StepEntry, WellnessFeelings, SleepEntry, KnownAllergy, initializeDatabase } from '../lib/database';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 interface HealthDataContextType {
@@ -69,11 +69,17 @@ interface HealthDataContextType {
   deleteWeightEntry: (id: string) => Promise<void>;
   updateWeightEntry: (id: string, entry: Partial<WeightEntry>) => Promise<void>;
 
-  // Sleep (NEW)
+  // Sleep
   sleepEntries: SleepEntry[];
   addSleepEntry: (entry: Omit<SleepEntry, 'id'>) => Promise<void>;
   deleteSleepEntry: (id: string) => Promise<void>;
   updateSleepEntry: (id: string, entry: Partial<SleepEntry>) => Promise<void>;
+
+  // Known Allergies (PERSISTENT)
+  knownAllergies: KnownAllergy[];
+  addKnownAllergy: (allergy: Omit<KnownAllergy, 'id'>) => Promise<void>;
+  deleteKnownAllergy: (id: string) => Promise<void>;
+  updateKnownAllergy: (id: string, allergy: Partial<KnownAllergy>) => Promise<void>;
 
   // Settings
   waterGoal: number;
@@ -101,6 +107,7 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
   const medicationLogs = useLiveQuery(() => db.medicationLogs.toArray()) || [];
   const weightEntries = useLiveQuery(() => db.weightEntries.toArray()) || [];
   const sleepEntries = useLiveQuery(() => db.sleepEntries.toArray()) || [];
+  const knownAllergies = useLiveQuery(() => db.knownAllergies.toArray()) || [];
 
   // Initialize database and load settings
   useEffect(() => {
@@ -269,6 +276,19 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
     await db.sleepEntries.update(id, entry);
   };
 
+  // Known Allergy operations
+  const addKnownAllergy = async (allergy: Omit<KnownAllergy, 'id'>) => {
+    await db.knownAllergies.add({ ...allergy, id: Date.now().toString() });
+  };
+
+  const deleteKnownAllergy = async (id: string) => {
+    await db.knownAllergies.delete(id);
+  };
+
+  const updateKnownAllergy = async (id: string, allergy: Partial<KnownAllergy>) => {
+    await db.knownAllergies.update(id, allergy);
+  };
+
   // Settings operations
   const setWaterGoal = async (goal: number) => {
     const settings = await db.settings.toArray();
@@ -337,6 +357,10 @@ export function HealthDataProvider({ children }: { children: ReactNode }) {
         addSleepEntry,
         deleteSleepEntry,
         updateSleepEntry,
+        knownAllergies,
+        addKnownAllergy,
+        deleteKnownAllergy,
+        updateKnownAllergy,
         waterGoal,
         setWaterGoal,
         weightUnit,
